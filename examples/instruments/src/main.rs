@@ -48,7 +48,7 @@ fn fly_demo(time: Res<Time>, mut query: Query<&mut FlightControlInput, With<Fixe
 fn follow_camera(
     time: Res<Time>,
     aircraft: Query<&Transform, With<FixedWingAircraft>>,
-    mut camera: Query<(&mut Transform, &Camera), With<Camera3d>>,
+    mut camera: Query<(&mut Transform, &Camera), (With<Camera3d>, Without<FixedWingAircraft>)>,
 ) {
     let Ok(target) = aircraft.single() else {
         return;
