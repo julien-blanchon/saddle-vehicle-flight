@@ -1,6 +1,6 @@
 # Saddle Vehicle Flight
 
-Reusable aircraft flight toolkit for Bevy covering fixed-wing and helicopter handling, US Standard Atmosphere 1976 sampling, normalized pilot controls, instrument-ready telemetry, and crate-local E2E verification.
+Reusable aircraft flight toolkit for Bevy covering fixed-wing, helicopter, and VTOL handling, US Standard Atmosphere 1976 sampling, normalized pilot controls, instrument-ready telemetry, and crate-local E2E verification.
 
 The crate is intentionally backend-agnostic. It owns aerodynamic math, control shaping, telemetry, and a lightweight internal rigid-body integrator. If a game wants Avian or another physics backend, the intended pattern is to keep this crate's force and torque outputs and swap only the application layer.
 
@@ -74,20 +74,21 @@ For examples and crate-local labs, `FlightPlugin::default()` is the always-on en
 | `FlightSystems` | Public ordering hooks: `ResolveControls`, `SampleEnvironment`, `ComputeDynamics`, `IntegrateMotion`, `UpdateTelemetry`, `EmitMessages` |
 | `FixedWingAircraft` | Fixed-wing configuration component with `trainer()` and `arcade_racer()` presets |
 | `HelicopterAircraft` | Helicopter configuration component with `utility()` and `arcade()` presets |
+| `VtolAircraft` | Tiltrotor / transition aircraft configuration with `tiltrotor_transport()` preset |
 | `FlightBody` | Mass, inertia, gravity, and integration-mode inputs |
 | `FlightEnvironment` | Wind, gust, density multiplier, and optional surface altitude |
-| `FlightControlInput` | Normalized pilot controls plus trim and gear requests |
+| `FlightControlInput` | Normalized pilot controls plus trim, VTOL transition, and gear requests |
 | `FlightAssist` | Stability augmentation knobs for wings-level, coordinated-turn, and hover leveling |
 | `FlightKinematics` | Runtime linear and angular velocity state |
 | `LandingGearState` | Runtime gear deployment and contact state |
 | `StallState` | Runtime fixed-wing stall state and hysteresis amount |
 | `FlightAeroState` | Runtime atmosphere sample, qbar, AoA, sideslip, and air-relative velocities |
 | `FlightForces` | Runtime thrust, lift, drag, side force, gravity, and torque breakdown including assist torques |
-| `FlightTelemetry` | Instrument/UI ready outputs for airspeed, altitude, world-frame vertical speed, AoA, sideslip, power, gear, and stall |
+| `FlightTelemetry` | Instrument/UI ready outputs for airspeed, altitude, world-frame vertical speed, AoA, sideslip, power, VTOL transition, gear, and stall |
 | `FlightControlResponse`, `PowerResponse`, `ContactGeometry` | Shared response-curve and contact tuning structs |
 | `StallEntered`, `StallRecovered`, `GearStateChanged` | Cross-crate messages for common gameplay reactions |
 
-Both `FixedWingAircraft` and `HelicopterAircraft` auto-require the runtime components they need, so a spawn only needs the aircraft config, a `FlightBody`, and a `Transform` unless the caller wants to override defaults.
+`FixedWingAircraft`, `HelicopterAircraft`, and `VtolAircraft` auto-require the runtime components they need, so a spawn only needs the aircraft config, a `FlightBody`, and a `Transform` unless the caller wants to override defaults.
 
 ## Supported Flight Models
 
@@ -97,34 +98,40 @@ Both `FixedWingAircraft` and `HelicopterAircraft` auto-require the runtime compo
   stall hysteresis, post-stall lift degradation, sideslip force, control-surface torque, ground effect, and landing-gear drag
 - Helicopter:
   collective-driven main lift, cyclic-style pitch/roll/yaw torque inputs, translational lift, anti-torque, ground effect, and skid/gear contact
+- VTOL:
+  tiltrotor-style transition blending with shared runway contact, hover control, wing-borne lift, and instrument-visible transition state
 - Shared:
   wind and gust input, throttle or collective lag, trim biases, assist torques, telemetry, and runtime force inspection
 
 ## Examples
 
+All example apps include live `saddle-pane` controls for wind, assist tuning, and camera offsets.
+
 | Example | Purpose | Run |
 | --- | --- | --- |
-| `basic_fixed_wing` | Pilot-controlled trainer aircraft with force-vector gizmos and telemetry overlay | `cargo run -p saddle-vehicle-flight --example basic_fixed_wing` |
-| `helicopter_hover` | Pilot-controlled utility helicopter with hover and translation | `cargo run -p saddle-vehicle-flight --example helicopter_hover` |
-| `stall_recovery` | Scripted stall entry and recovery for fixed-wing tuning | `cargo run -p saddle-vehicle-flight --example stall_recovery` |
-| `wind_gusts` | Persistent crosswind plus animated gusts using `FlightEnvironment` | `cargo run -p saddle-vehicle-flight --example wind_gusts` |
-| `instruments` | Camera-follow and overlay focused on telemetry consumers | `cargo run -p saddle-vehicle-flight --example instruments` |
-| `control_profiles` | Side-by-side comparison of trainer or utility presets against arcade presets | `cargo run -p saddle-vehicle-flight --example control_profiles` |
+| `basic_fixed_wing` | Pilot-controlled trainer aircraft with force-vector gizmos and telemetry overlay | `cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-example-basic-fixed-wing` |
+| `helicopter_hover` | Pilot-controlled utility helicopter with hover and translation | `cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-example-helicopter-hover` |
+| `cockpit_vtol` | Tiltrotor cockpit demo with hover-to-cruise transition over an airfield | `cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-example-cockpit-vtol` |
+| `stall_recovery` | Scripted stall entry and recovery for fixed-wing tuning | `cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-example-stall-recovery` |
+| `wind_gusts` | Persistent crosswind plus animated gusts using `FlightEnvironment` | `cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-example-wind-gusts` |
+| `instruments` | Camera-follow and overlay focused on telemetry consumers | `cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-example-instruments` |
+| `control_profiles` | Side-by-side comparison of trainer or utility presets against arcade presets | `cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-example-control-profiles` |
 
 ## Crate-Local Lab
 
 The workspace includes a crate-local standalone lab app at `shared/vehicle/saddle-vehicle-flight/examples/lab`:
 
 ```bash
-cargo run -p saddle-vehicle-flight-lab
+cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-lab
 ```
 
 E2E verification commands:
 
 ```bash
-cargo run -p saddle-vehicle-flight-lab --features e2e -- flight_fixed_wing_smoke
-cargo run -p saddle-vehicle-flight-lab --features e2e -- flight_stall_recovery
-cargo run -p saddle-vehicle-flight-lab --features e2e -- flight_helicopter_hover
+cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-lab --features e2e -- flight_fixed_wing_smoke
+cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-lab --features e2e -- flight_stall_recovery
+cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-lab --features e2e -- flight_helicopter_hover
+cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-lab --features e2e -- flight_vtol_transition
 ```
 
 ## BRP

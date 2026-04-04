@@ -11,6 +11,7 @@ Pure or mostly pure logic:
 3. `model/common.rs`
 4. `model/fixed_wing.rs`
 5. `model/helicopter.rs`
+6. `model/vtol.rs`
 
 Bevy-facing orchestration:
 
@@ -30,7 +31,7 @@ FlightControlInput
   -> ResolveControls
   -> FlightEnvironment / atmosphere sample
   -> sample body-relative motion
-  -> fixed-wing or helicopter model path
+  -> fixed-wing, helicopter, or VTOL model path
   -> FlightAeroState + FlightForces
   -> integrate or hand off to external physics
   -> FlightTelemetry
@@ -127,6 +128,18 @@ The model is coefficient-driven enough for sim-lite tuning, but intentionally si
 
 The helicopter path is intentionally generic. It does not simulate blade-element aerodynamics, vortex ring state, or tail-rotor geometry in detail.
 
+## VTOL Path
+
+`compute_vtol_dynamics` combines the two existing model families rather than inventing a separate physics stack:
+
+1. the fixed-wing sub-model provides wing-borne lift, drag, sideslip, and stall behavior
+2. the rotorcraft sub-model provides hover lift, low-speed drag, and hover-style control torques
+3. `FlightControlInput::vtol_transition` is smoothed into a resolved transition state
+4. rotor thrust is tilted from body-up toward body-forward as transition increases
+5. wing-borne lift and airplane-style torques blend in over the configured transition window
+
+That makes the VTOL model intentionally game-ready rather than study-level. It is aimed at tiltrotor transports and arcade cockpit demos, not full prop-rotor certification-grade simulation.
+
 ## Integration Boundary
 
 By default `FlightBody::use_internal_integration = true`, so the crate updates:
@@ -147,7 +160,7 @@ That keeps the reusable atmosphere and flight-model code independent from Avian,
 
 ## Contact And Ground Effect
 
-`ContactGeometry` provides a minimal runway or skid-contact model:
+`ContactGeometry` provides a minimal runway or skid-contact model shared by fixed-wing, helicopter, and VTOL aircraft:
 
 - optional retractable gear scaling of contact offset
 - vertical clamp against `FlightEnvironment::surface_altitude_msl_m`

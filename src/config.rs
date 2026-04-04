@@ -296,3 +296,110 @@ impl Default for HelicopterAircraft {
         Self::utility()
     }
 }
+
+#[derive(Component, Reflect, Debug, Clone, Copy)]
+#[reflect(Component, Debug)]
+#[require(
+    Transform,
+    GlobalTransform,
+    FlightBody,
+    FlightAssist,
+    FlightAeroState,
+    FlightControlInput,
+    FlightEnvironment,
+    FlightForces,
+    FlightKinematics,
+    FlightMessageState,
+    LandingGearState,
+    ResolvedFlightControls,
+    FlightTelemetry,
+    StallState
+)]
+pub struct VtolAircraft {
+    pub fixed_wing: FixedWingAircraft,
+    pub rotorcraft: HelicopterAircraft,
+    pub contact_geometry: ContactGeometry,
+    pub transition_rate_per_second: f32,
+    pub wingborne_blend_start: f32,
+    pub wingborne_blend_end: f32,
+}
+
+impl VtolAircraft {
+    pub fn tiltrotor_transport() -> Self {
+        let mut fixed_wing = FixedWingAircraft::trainer();
+        fixed_wing.wing_area_m2 = 28.0;
+        fixed_wing.wingspan_m = 15.6;
+        fixed_wing.mean_chord_m = 1.94;
+        fixed_wing.max_thrust_newtons = 0.0;
+        fixed_wing.max_lift_coefficient = 1.62;
+        fixed_wing.zero_lift_drag_coefficient = 0.031;
+        fixed_wing.stall_alpha_rad = 18.0_f32.to_radians();
+        fixed_wing.recovery_alpha_rad = 13.0_f32.to_radians();
+        fixed_wing.control_response = FlightControlResponse {
+            pitch_rate_per_second: 5.8,
+            roll_rate_per_second: 6.2,
+            yaw_rate_per_second: 4.2,
+            ..default()
+        };
+        fixed_wing.power_response = PowerResponse {
+            throttle_rise_per_second: 0.75,
+            throttle_fall_per_second: 1.1,
+            ..default()
+        };
+
+        let mut rotorcraft = HelicopterAircraft::utility();
+        rotorcraft.max_main_lift_newtons = 31_000.0;
+        rotorcraft.rotor_disc_area_m2 = 92.0;
+        rotorcraft.translational_lift_gain = 0.18;
+        rotorcraft.translational_lift_full_speed_mps = 32.0;
+        rotorcraft.pitch_torque_authority = 4_400.0;
+        rotorcraft.roll_torque_authority = 4_100.0;
+        rotorcraft.yaw_torque_authority = 3_000.0;
+        rotorcraft.anti_torque_per_collective = 1_200.0;
+        rotorcraft.angular_damping = Vec3::new(0.52, 0.70, 0.44);
+        rotorcraft.control_response = FlightControlResponse {
+            pitch_rate_per_second: 5.0,
+            roll_rate_per_second: 5.4,
+            yaw_rate_per_second: 4.6,
+            ..default()
+        };
+        rotorcraft.power_response = PowerResponse {
+            throttle_rise_per_second: 0.85,
+            throttle_fall_per_second: 1.25,
+            collective_rise_per_second: 1.15,
+            collective_fall_per_second: 1.35,
+        };
+
+        Self {
+            fixed_wing,
+            rotorcraft,
+            contact_geometry: ContactGeometry {
+                contact_offset_below_origin_m: 1.95,
+                retractable: true,
+                extension_rate_per_second: 0.85,
+                surface_damping_per_second: 1.6,
+                ground_effect_height_m: 5.5,
+                ground_effect_boost: 0.16,
+            },
+            transition_rate_per_second: 0.35,
+            wingborne_blend_start: 0.22,
+            wingborne_blend_end: 0.72,
+        }
+    }
+
+    pub fn wingborne_blend(self, transition: f32) -> f32 {
+        let width = (self.wingborne_blend_end - self.wingborne_blend_start).max(0.001);
+        let normalized = (transition - self.wingborne_blend_start) / width;
+        crate::math::smoothstep01(normalized)
+    }
+
+    pub fn tiltrotor_transport_body() -> FlightBody {
+        FlightBody::new(2_950.0, Vec3::new(6_400.0, 7_200.0, 8_400.0))
+    }
+}
+
+impl Default for VtolAircraft {
+    fn default() -> Self {
+        Self::tiltrotor_transport()
+    }
+}

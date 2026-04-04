@@ -26,6 +26,7 @@ pub(crate) fn update_telemetry(
         telemetry.sideslip_deg = aero.sideslip_rad.to_degrees();
         telemetry.throttle = controls.throttle;
         telemetry.collective = controls.collective;
+        telemetry.vtol_transition = controls.transition;
         telemetry.gear_position = gear.position;
         telemetry.gear_deployed = gear.deployed();
         telemetry.stalled = stall.is_stalled;

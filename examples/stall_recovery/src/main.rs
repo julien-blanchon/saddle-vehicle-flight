@@ -1,7 +1,10 @@
+use saddle_vehicle_flight_example_support as support;
+
 use bevy::prelude::*;
 use saddle_vehicle_flight::{
-    FixedWingAircraft, FlightAeroState, FlightControlInput, FlightPlugin, FlightTelemetry,
+    FixedWingAircraft, FlightAeroState, FlightControlInput, FlightTelemetry,
 };
+use support::configure_example_app_with_follow_camera;
 
 #[derive(Resource, Debug, Clone, Copy)]
 struct StallDemoState {
@@ -9,13 +12,12 @@ struct StallDemoState {
 }
 
 fn main() {
-    App::new()
-        .insert_resource(ClearColor(Color::srgb(0.58, 0.73, 0.92)))
-        .insert_resource(StallDemoState { elapsed: 0.0 })
-        .add_plugins((DefaultPlugins, FlightPlugin::default()))
-        .add_systems(Startup, setup)
-        .add_systems(Update, (script_demo, follow_camera, update_overlay))
-        .run();
+    let mut app = App::new();
+    configure_example_app_with_follow_camera(&mut app, false);
+    app.insert_resource(StallDemoState { elapsed: 0.0 });
+    app.add_systems(Startup, setup);
+    app.add_systems(Update, (script_demo, follow_camera, update_overlay));
+    app.run();
 }
 
 fn setup(

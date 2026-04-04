@@ -60,6 +60,7 @@ pub struct FlightTelemetry {
     pub sideslip_deg: f32,
     pub throttle: f32,
     pub collective: f32,
+    pub vtol_transition: f32,
     pub gear_position: f32,
     pub gear_deployed: bool,
     pub stalled: bool,

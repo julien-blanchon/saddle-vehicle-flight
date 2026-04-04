@@ -1,6 +1,6 @@
 use crate::{
     components::{FlightBody, FlightKinematics, LandingGearState},
-    config::{FixedWingAircraft, HelicopterAircraft},
+    config::{FixedWingAircraft, HelicopterAircraft, VtolAircraft},
     math::sanitize_vec3,
     telemetry::FlightForces,
 };
@@ -56,11 +56,13 @@ pub(crate) fn resolve_ground_contact(
         &mut LandingGearState,
         Option<&FixedWingAircraft>,
         Option<&HelicopterAircraft>,
+        Option<&VtolAircraft>,
         &crate::components::FlightEnvironment,
     )>,
 ) {
     let dt = time.delta_secs();
-    for (mut transform, mut kinematics, mut gear, fixed_wing, helicopter, environment) in &mut query
+    for (mut transform, mut kinematics, mut gear, fixed_wing, helicopter, vtol, environment) in
+        &mut query
     {
         let Some(surface_altitude) = environment.surface_altitude_msl_m else {
             gear.contact = false;
@@ -69,6 +71,8 @@ pub(crate) fn resolve_ground_contact(
         let contact = if let Some(aircraft) = fixed_wing {
             aircraft.landing_contact
         } else if let Some(aircraft) = helicopter {
+            aircraft.contact_geometry
+        } else if let Some(aircraft) = vtol {
             aircraft.contact_geometry
         } else {
             gear.contact = false;
@@ -85,7 +89,7 @@ pub(crate) fn resolve_ground_contact(
             }
             let horizontal_damping =
                 (1.0 - contact.surface_damping_per_second * dt).clamp(0.0, 1.0);
-            if fixed_wing.is_some() {
+            if fixed_wing.is_some() || vtol.is_some() {
                 let body_forward = Vec3::new(transform.forward().x, 0.0, transform.forward().z)
                     .normalize_or_zero();
                 let body_right =

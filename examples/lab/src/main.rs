@@ -18,13 +18,14 @@ use bevy_enhanced_input::{
 use saddle_vehicle_flight::{FlightAeroState, FlightForces, FlightTelemetry};
 use support::{
     ExamplePilot, FollowCamera, configure_example_app, draw_force_vectors, spawn_fixed_wing_demo,
-    spawn_helicopter_demo, spawn_lights_ground_and_camera, spawn_overlay,
+    spawn_helicopter_demo, spawn_lights_ground_and_camera, spawn_overlay, spawn_vtol_demo,
 };
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LabState {
     pub plane: Entity,
     pub helicopter: Entity,
+    pub vtol: Entity,
     pub active: ActiveVehicle,
 }
 
@@ -32,6 +33,7 @@ pub struct LabState {
 pub enum ActiveVehicle {
     FixedWing,
     Helicopter,
+    Vtol,
 }
 
 #[derive(Component)]
@@ -45,12 +47,17 @@ struct SelectFixedWingAction;
 #[action_output(bool)]
 struct SelectHelicopterAction;
 
+#[derive(Debug, InputAction)]
+#[action_output(bool)]
+struct SelectVtolAction;
+
 fn main() {
     let mut app = App::new();
     configure_example_app(&mut app);
     app.add_input_context::<LabSwitcher>()
         .add_observer(select_fixed_wing)
-        .add_observer(select_helicopter);
+        .add_observer(select_helicopter)
+        .add_observer(select_vtol);
     #[cfg(all(feature = "dev", not(target_arch = "wasm32")))]
     app.add_plugins((
         RemotePlugin::default(),
@@ -90,6 +97,17 @@ fn setup(
         0.60,
         true,
     );
+    let vtol = spawn_vtol_demo(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        "Lab Tiltrotor",
+        Transform::from_xyz(28.0, 2.1, -18.0).with_rotation(Quat::from_rotation_y(-0.22)),
+        Vec3::new(0.0, 0.0, -6.0),
+        0.64,
+        0.20,
+        true,
+    );
 
     commands
         .entity(plane)
@@ -97,9 +115,13 @@ fn setup(
     commands
         .entity(helicopter)
         .insert(ContextActivity::<ExamplePilot>::INACTIVE);
+    commands
+        .entity(vtol)
+        .insert(ContextActivity::<ExamplePilot>::INACTIVE);
     commands.insert_resource(LabState {
         plane,
         helicopter,
+        vtol,
         active: ActiveVehicle::FixedWing,
     });
     commands.spawn((
@@ -115,6 +137,11 @@ fn setup(
                 Action::<SelectHelicopterAction>::new(),
                 InputPress::default(),
                 bindings![KeyCode::Digit2],
+            ),
+            (
+                Action::<SelectVtolAction>::new(),
+                InputPress::default(),
+                bindings![KeyCode::Digit3],
             )
         ]),
     ));
@@ -150,6 +177,15 @@ fn select_helicopter(
     );
 }
 
+fn select_vtol(
+    _: On<Start<SelectVtolAction>>,
+    mut commands: Commands,
+    mut state: ResMut<LabState>,
+    mut cameras: Query<&mut FollowCamera>,
+) {
+    set_active_vehicle(&mut commands, &mut state, &mut cameras, ActiveVehicle::Vtol);
+}
+
 fn set_active_vehicle(
     commands: &mut Commands,
     state: &mut LabState,
@@ -175,6 +211,13 @@ fn set_active_vehicle(
         } else {
             ContextActivity::<ExamplePilot>::INACTIVE
         });
+    commands
+        .entity(state.vtol)
+        .insert(if state.active == ActiveVehicle::Vtol {
+            ContextActivity::<ExamplePilot>::ACTIVE
+        } else {
+            ContextActivity::<ExamplePilot>::INACTIVE
+        });
 
     if let Ok(mut camera) = cameras.single_mut() {
         match state.active {
@@ -187,6 +230,11 @@ fn set_active_vehicle(
                 camera.distance = 15.0;
                 camera.height = 5.5;
                 camera.lateral_offset = -2.0;
+            }
+            ActiveVehicle::Vtol => {
+                camera.distance = 19.0;
+                camera.height = 7.0;
+                camera.lateral_offset = 1.5;
             }
         }
     }
@@ -203,6 +251,10 @@ fn update_overlay(
         (&FlightTelemetry, &FlightAeroState, &FlightForces),
         With<saddle_vehicle_flight::HelicopterAircraft>,
     >,
+    vtol: Query<
+        (&FlightTelemetry, &FlightAeroState, &FlightForces),
+        With<saddle_vehicle_flight::VtolAircraft>,
+    >,
 ) {
     let Ok(mut overlay) = overlay.single_mut() else {
         return;
@@ -213,9 +265,12 @@ fn update_overlay(
     let Ok((heli_telemetry, heli_aero, heli_forces)) = helicopter.single() else {
         return;
     };
+    let Ok((vtol_telemetry, vtol_aero, vtol_forces)) = vtol.single() else {
+        return;
+    };
 
     overlay.0 = format!(
-        "Flight Lab\nActive craft: {:?}  (1 fixed-wing, 2 helicopter)\n\nFixed-wing\n  TAS {:>6.1}  Alt {:>6.1}  AoA {:>5.1}  Stall {}\n  q {:>7.1}  Throttle {:>4.2}  Gear {:>4.2}\n  Lift {:>7.1}N  Thrust {:>7.1}N\n\nHelicopter\n  TAS {:>6.1}  Alt {:>6.1}  Slip {:>5.1}  Vertical {:>5.1}\n  q {:>7.1}  Collective {:>4.2}  Gear {:>4.2}\n  Lift {:>7.1}N  Torque {:>7.1}Nm\n\nPilot controls: arrows pitch/roll, Q/E yaw, [/] throttle or collective, G gear.\nBRP targets: Lab Bush Plane, Lab Utility Helicopter, Example Camera.",
+        "Flight Lab\nActive craft: {:?}  (1 fixed-wing, 2 helicopter, 3 VTOL)\n\nFixed-wing\n  TAS {:>6.1}  Alt {:>6.1}  AoA {:>5.1}  Stall {}\n  q {:>7.1}  Throttle {:>4.2}  Gear {:>4.2}\n  Lift {:>7.1}N  Thrust {:>7.1}N\n\nHelicopter\n  TAS {:>6.1}  Alt {:>6.1}  Slip {:>5.1}  Vertical {:>5.1}\n  q {:>7.1}  Collective {:>4.2}  Gear {:>4.2}\n  Lift {:>7.1}N  Torque {:>7.1}Nm\n\nVTOL\n  TAS {:>6.1}  Alt {:>6.1}  AoA {:>5.1}  Transition {:>4.2}\n  q {:>7.1}  Power {:>4.2}  Gear {:>4.2}\n  Lift {:>7.1}N  Thrust {:>7.1}N\n\nPilot controls: arrows pitch/roll, Q/E yaw, [/] throttle or collective, ,/. VTOL transition, G gear.\nBRP targets: Lab Bush Plane, Lab Utility Helicopter, Lab Tiltrotor, Example Camera.",
         state.active,
         plane_telemetry.true_airspeed_mps,
         plane_telemetry.altitude_msl_m,
@@ -235,5 +290,14 @@ fn update_overlay(
         heli_telemetry.gear_position,
         heli_forces.lift_world_newtons.length(),
         heli_forces.total_torque_body_nm.length(),
+        vtol_telemetry.true_airspeed_mps,
+        vtol_telemetry.altitude_msl_m,
+        vtol_telemetry.angle_of_attack_deg,
+        vtol_telemetry.vtol_transition,
+        vtol_aero.dynamic_pressure_pa,
+        vtol_telemetry.throttle.max(vtol_telemetry.collective),
+        vtol_telemetry.gear_position,
+        vtol_forces.lift_world_newtons.length(),
+        vtol_forces.thrust_world_newtons.length(),
     );
 }

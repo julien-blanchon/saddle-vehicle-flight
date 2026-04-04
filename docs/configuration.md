@@ -37,6 +37,7 @@ Defaults below refer to each type's `Default` implementation unless the section 
 | `yaw` | `f32` | normalized | `0.0` | `[-1, 1]` recommended | Yaw or rudder command before response shaping |
 | `throttle` | `f32` | normalized | `0.0` | `[0, 1]` | Fixed-wing power command |
 | `collective` | `f32` | normalized | `0.0` | `[0, 1]` | Helicopter lift command |
+| `vtol_transition` | `f32` | normalized | `0.0` | `[0, 1]` | VTOL nacelle or transition command where `0 = hover` and `1 = wing-borne` |
 | `pitch_trim` | `f32` | normalized | `0.0` | small values recommended | Adds bias through the aircraft trim authority |
 | `roll_trim` | `f32` | normalized | `0.0` | small values recommended | Adds bias through the aircraft trim authority |
 | `yaw_trim` | `f32` | normalized | `0.0` | small values recommended | Adds bias through the aircraft trim authority |
@@ -140,6 +141,19 @@ Defaults below refer to each type's `Default` implementation unless the section 
 | `power_response` | `PowerResponse` | n/a | utility collective response | see above | Collective lag tuning |
 | `contact_geometry` | `ContactGeometry` | n/a | utility skid contact | see above | Ground-contact and ground-effect behavior |
 
+## `VtolAircraft`
+
+`Default` for `VtolAircraft` is `VtolAircraft::tiltrotor_transport()`.
+
+| Field | Type | Unit | Default (`tiltrotor_transport`) | Valid range | Effect |
+| --- | --- | --- | --- | --- | --- |
+| `fixed_wing` | `FixedWingAircraft` | n/a | tuned tiltrotor wing model | see fixed-wing section | Wing-borne lift, drag, stall, and airplane-style torque path used during transition |
+| `rotorcraft` | `HelicopterAircraft` | n/a | tuned tiltrotor rotor model | see helicopter section | Hover lift, low-speed drag, and hover-style control path |
+| `contact_geometry` | `ContactGeometry` | n/a | retractable transport gear | see above | Shared runway contact and ground-effect behavior for the VTOL airframe |
+| `transition_rate_per_second` | `f32` | 1/s | `0.35` | `> 0` | Slew rate from the commanded `vtol_transition` input to the resolved transition state | Too low makes mode swaps feel unresponsive |
+| `wingborne_blend_start` | `f32` | normalized | `0.22` | `0..=1` | Transition point where fixed-wing lift and torque blending begin | Too low makes wings dominate before the aircraft has speed |
+| `wingborne_blend_end` | `f32` | normalized | `0.72` | `>= start`, `<= 1` | Transition point where the aircraft is treated as fully wing-borne | Too high leaves hover behavior active for too long |
+
 ## Runtime Outputs
 
 These are not authoring inputs, but consumers commonly read them directly:
@@ -148,13 +162,13 @@ These are not authoring inputs, but consumers commonly read them directly:
 | --- | --- |
 | `FlightAeroState` | Atmosphere sample, altitude, air-relative velocities, qbar, AoA, and sideslip |
 | `FlightForces` | Force and torque breakdown for debugging, BRP, or backend adapters, including assist torques |
-| `FlightTelemetry` | Instrument-ready human-readable values, including world-frame vertical speed |
+| `FlightTelemetry` | Instrument-ready human-readable values, including world-frame vertical speed and VTOL transition |
 | `LandingGearState` | Runtime gear position, target, and contact status |
 | `StallState` | Fixed-wing stall flag plus hysteresis amount |
 
 ## Required Runtime Components
 
-Spawning `FixedWingAircraft` or `HelicopterAircraft` automatically requires:
+Spawning `FixedWingAircraft`, `HelicopterAircraft`, or `VtolAircraft` automatically requires:
 
 - `Transform`
 - `GlobalTransform`

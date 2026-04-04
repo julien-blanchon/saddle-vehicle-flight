@@ -17,6 +17,7 @@ pub use components::{
 };
 pub use config::{
     ContactGeometry, FixedWingAircraft, FlightControlResponse, HelicopterAircraft, PowerResponse,
+    VtolAircraft,
 };
 pub use messages::{GearStateChanged, StallEntered, StallRecovered};
 pub use telemetry::{FlightAeroState, FlightForces, FlightTelemetry};
@@ -96,6 +97,7 @@ impl Plugin for FlightPlugin {
             .register_type::<LandingGearState>()
             .register_type::<PowerResponse>()
             .register_type::<StallState>()
+            .register_type::<VtolAircraft>()
             .add_systems(
                 self.activate_schedule,
                 systems::activation::activate_runtime,
@@ -126,10 +128,15 @@ impl Plugin for FlightPlugin {
                         .in_set(FlightSystems::ComputeDynamics),
                     systems::dynamics::compute_helicopter_dynamics
                         .in_set(FlightSystems::ComputeDynamics),
-                    systems::integration::integrate_motion.in_set(FlightSystems::IntegrateMotion),
-                    systems::integration::resolve_ground_contact
-                        .in_set(FlightSystems::IntegrateMotion),
-                    systems::integration::sanitize_state.in_set(FlightSystems::IntegrateMotion),
+                    systems::dynamics::compute_vtol_dynamics.in_set(FlightSystems::ComputeDynamics),
+                    (
+                        systems::integration::integrate_motion
+                            .in_set(FlightSystems::IntegrateMotion),
+                        systems::integration::resolve_ground_contact
+                            .in_set(FlightSystems::IntegrateMotion),
+                        systems::integration::sanitize_state.in_set(FlightSystems::IntegrateMotion),
+                    )
+                        .chain(),
                     systems::telemetry::update_telemetry.in_set(FlightSystems::UpdateTelemetry),
                     systems::messages::emit_stall_messages.in_set(FlightSystems::EmitMessages),
                     systems::messages::emit_gear_messages.in_set(FlightSystems::EmitMessages),
@@ -154,3 +161,7 @@ mod systems_tests;
 #[cfg(test)]
 #[path = "plugin_tests.rs"]
 mod plugin_tests;
+
+#[cfg(test)]
+#[path = "vtol_tests.rs"]
+mod vtol_tests;

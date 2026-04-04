@@ -2,17 +2,19 @@ use saddle_vehicle_flight_example_support as support;
 
 use bevy::prelude::*;
 use saddle_vehicle_flight::{
-    FixedWingAircraft, FlightAeroState, FlightControlInput, FlightPlugin, FlightTelemetry,
+    FixedWingAircraft, FlightAeroState, FlightControlInput, FlightTelemetry,
 };
-use support::{spawn_fixed_wing_demo, spawn_lights_ground_and_camera, spawn_overlay};
+use support::{
+    configure_example_app_with_follow_camera, spawn_fixed_wing_demo,
+    spawn_lights_ground_and_camera, spawn_overlay,
+};
 
 fn main() {
-    App::new()
-        .insert_resource(ClearColor(Color::srgb(0.60, 0.76, 0.95)))
-        .add_plugins((DefaultPlugins, FlightPlugin::default()))
-        .add_systems(Startup, setup)
-        .add_systems(Update, (fly_demo, follow_camera, update_overlay))
-        .run();
+    let mut app = App::new();
+    configure_example_app_with_follow_camera(&mut app, false);
+    app.add_systems(Startup, setup);
+    app.add_systems(Update, (fly_demo, follow_camera, update_overlay));
+    app.run();
 }
 
 fn setup(

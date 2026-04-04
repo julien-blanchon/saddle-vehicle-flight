@@ -5,10 +5,79 @@ use bevy_enhanced_input::prelude::{
     Action, Bidirectional, Bindings, Cancel as InputCancel, Complete, ContextActivity, Fire,
     InputAction, Press as InputPress, Start, actions, bindings,
 };
+use saddle_pane::prelude::*;
 use saddle_vehicle_flight::{
-    FixedWingAircraft, FlightControlInput, FlightEnvironment, FlightForces, FlightPlugin,
-    HelicopterAircraft,
+    FixedWingAircraft, FlightAeroState, FlightAssist, FlightControlInput, FlightEnvironment,
+    FlightForces, FlightPlugin, FlightTelemetry, HelicopterAircraft, VtolAircraft,
 };
+
+#[derive(Resource, Clone, Pane)]
+#[pane(title = "Flight Tuning")]
+pub struct FlightExamplePane {
+    #[pane(slider, min = -20.0, max = 20.0, step = 0.5)]
+    pub wind_x_mps: f32,
+    #[pane(slider, min = -20.0, max = 20.0, step = 0.5)]
+    pub wind_z_mps: f32,
+    #[pane(slider, min = 0.5, max = 1.5, step = 0.01)]
+    pub density_multiplier: f32,
+    #[pane(slider, min = 0.0, max = 1.0, step = 0.02)]
+    pub wings_leveling: f32,
+    #[pane(slider, min = 0.0, max = 1.0, step = 0.02)]
+    pub coordinated_turn: f32,
+    #[pane(slider, min = 0.0, max = 1.0, step = 0.02)]
+    pub hover_leveling: f32,
+    #[pane(slider, min = 8.0, max = 30.0, step = 0.25)]
+    pub camera_distance: f32,
+    #[pane(slider, min = 2.0, max = 12.0, step = 0.25)]
+    pub camera_height: f32,
+    #[pane(slider, min = -6.0, max = 6.0, step = 0.1)]
+    pub camera_lateral_offset: f32,
+}
+
+impl Default for FlightExamplePane {
+    fn default() -> Self {
+        Self {
+            wind_x_mps: 0.0,
+            wind_z_mps: 0.0,
+            density_multiplier: 1.0,
+            wings_leveling: 0.18,
+            coordinated_turn: 0.16,
+            hover_leveling: 0.20,
+            camera_distance: 18.0,
+            camera_height: 6.0,
+            camera_lateral_offset: 0.0,
+        }
+    }
+}
+
+#[derive(Resource, Default, Clone, Pane)]
+#[pane(title = "Flight Telemetry")]
+pub struct FlightExampleStats {
+    #[pane(monitor)]
+    pub true_airspeed_mps: f32,
+    #[pane(monitor)]
+    pub altitude_msl_m: f32,
+    #[pane(monitor)]
+    pub angle_of_attack_deg: f32,
+    #[pane(monitor)]
+    pub vtol_transition: f32,
+}
+
+pub fn pane_plugins() -> (
+    bevy_flair::FlairPlugin,
+    bevy_input_focus::InputDispatchPlugin,
+    bevy_ui_widgets::UiWidgetsPlugins,
+    bevy_input_focus::tab_navigation::TabNavigationPlugin,
+    saddle_pane::PanePlugin,
+) {
+    (
+        bevy_flair::FlairPlugin,
+        bevy_input_focus::InputDispatchPlugin,
+        bevy_ui_widgets::UiWidgetsPlugins,
+        bevy_input_focus::tab_navigation::TabNavigationPlugin,
+        saddle_pane::PanePlugin,
+    )
+}
 
 #[derive(Component)]
 pub struct ExamplePilot;
@@ -42,11 +111,23 @@ pub struct YawAction;
 pub struct PowerAdjustAction;
 
 #[derive(Debug, InputAction)]
+#[action_output(f32)]
+pub struct TransitionAdjustAction;
+
+#[derive(Debug, InputAction)]
 #[action_output(bool)]
 pub struct GearToggleAction;
 
 pub fn configure_example_app(app: &mut App) {
-    app.add_plugins((DefaultPlugins, FlightPlugin::default()));
+    configure_example_app_with_follow_camera(app, true);
+}
+
+pub fn configure_example_app_with_follow_camera(app: &mut App, enable_follow_camera: bool) {
+    app.add_plugins((DefaultPlugins, FlightPlugin::default(), pane_plugins()))
+        .insert_resource(FlightExamplePane::default())
+        .insert_resource(FlightExampleStats::default())
+        .register_pane::<FlightExamplePane>()
+        .register_pane::<FlightExampleStats>();
     if !app.is_plugin_added::<bevy_enhanced_input::prelude::EnhancedInputPlugin>() {
         app.add_plugins(bevy_enhanced_input::prelude::EnhancedInputPlugin);
     }
@@ -62,9 +143,16 @@ pub fn configure_example_app(app: &mut App) {
         .add_observer(clear_yaw_on_cancel)
         .add_observer(clear_yaw_on_complete)
         .add_observer(adjust_power)
+        .add_observer(adjust_transition)
         .add_observer(trigger_gear_toggle)
-        .add_systems(Update, (spin_rotors, follow_camera))
+        .add_systems(
+            Update,
+            (spin_rotors, sync_pane_to_runtime, update_pane_stats).chain(),
+        )
         .add_systems(PostUpdate, clear_one_shot_controls);
+    if enable_follow_camera {
+        app.add_systems(Update, follow_camera);
+    }
 }
 
 pub fn pilot_actions() -> impl Bundle {
@@ -88,6 +176,10 @@ pub fn pilot_actions() -> impl Bundle {
                 Bindings::spawn(Bidirectional::new(KeyCode::BracketLeft, KeyCode::BracketRight)),
             ),
             (
+                Action::<TransitionAdjustAction>::new(),
+                Bindings::spawn(Bidirectional::new(KeyCode::Comma, KeyCode::Period)),
+            ),
+            (
                 Action::<GearToggleAction>::new(),
                 InputPress::default(),
                 bindings![KeyCode::KeyG],
@@ -96,7 +188,7 @@ pub fn pilot_actions() -> impl Bundle {
     )
 }
 
-pub fn spawn_lights_ground_and_camera(
+pub fn spawn_lights_and_ground(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
@@ -152,6 +244,24 @@ pub fn spawn_lights_ground_and_camera(
         Transform::from_xyz(28.0, 0.025, 0.0),
     ));
 
+    commands.spawn((
+        Name::new("Runway Wind Sock"),
+        Mesh3d(meshes.add(Cuboid::new(0.18, 3.2, 0.18))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgb(0.74, 0.74, 0.78),
+            perceptual_roughness: 0.78,
+            ..default()
+        })),
+        Transform::from_xyz(18.0, 1.6, -34.0),
+    ));
+}
+
+pub fn spawn_lights_ground_and_camera(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+) {
+    spawn_lights_and_ground(commands, meshes, materials);
     commands.spawn((
         Name::new("Example Camera"),
         Camera3d::default(),
@@ -352,6 +462,138 @@ pub fn spawn_helicopter_demo(
     entity_id
 }
 
+pub fn spawn_vtol_demo(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    name: &str,
+    transform: Transform,
+    initial_velocity_world_mps: Vec3,
+    power: f32,
+    transition: f32,
+    pilot_controlled: bool,
+) -> Entity {
+    let mut entity = commands.spawn((
+        Name::new(name.to_string()),
+        VtolAircraft::tiltrotor_transport(),
+        VtolAircraft::tiltrotor_transport_body(),
+        saddle_vehicle_flight::FlightAssist {
+            wings_leveling: 0.18,
+            coordinated_turn: 0.16,
+            hover_leveling: 0.44,
+        },
+        saddle_vehicle_flight::FlightKinematics {
+            linear_velocity_world_mps: initial_velocity_world_mps,
+            ..default()
+        },
+        FlightControlInput {
+            throttle: power,
+            collective: power,
+            vtol_transition: transition,
+            ..default()
+        },
+        FlightEnvironment {
+            surface_altitude_msl_m: Some(0.0),
+            ..default()
+        },
+        Mesh3d(meshes.add(Cuboid::new(2.2, 1.4, 8.4))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgb(0.22, 0.35, 0.42),
+            perceptual_roughness: 0.46,
+            metallic: 0.12,
+            ..default()
+        })),
+        transform,
+    ));
+
+    if pilot_controlled {
+        entity.insert(pilot_actions());
+    }
+
+    let entity_id = entity.id();
+    entity.with_children(|parent| {
+        parent.spawn((
+            Name::new("Vtol Wing"),
+            Mesh3d(meshes.add(Cuboid::new(16.0, 0.28, 2.2))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgb(0.75, 0.80, 0.84),
+                perceptual_roughness: 0.56,
+                ..default()
+            })),
+            Transform::from_xyz(0.0, 0.18, 0.2),
+        ));
+        parent.spawn((
+            Name::new("Vtol Tailplane"),
+            Mesh3d(meshes.add(Cuboid::new(5.4, 0.22, 1.4))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgb(0.75, 0.80, 0.84),
+                perceptual_roughness: 0.56,
+                ..default()
+            })),
+            Transform::from_xyz(0.0, 1.0, 3.2),
+        ));
+        parent.spawn((
+            Name::new("Vtol Left Nacelle"),
+            Mesh3d(meshes.add(Capsule3d::new(0.45, 1.6))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgb(0.16, 0.18, 0.21),
+                perceptual_roughness: 0.42,
+                ..default()
+            })),
+            Transform::from_xyz(-6.2, 0.48, -0.1)
+                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+        ));
+        parent.spawn((
+            Name::new("Vtol Right Nacelle"),
+            Mesh3d(meshes.add(Capsule3d::new(0.45, 1.6))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgb(0.16, 0.18, 0.21),
+                perceptual_roughness: 0.42,
+                ..default()
+            })),
+            Transform::from_xyz(6.2, 0.48, -0.1)
+                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+        ));
+        parent.spawn((
+            Name::new("Left Rotor"),
+            RotorDisk { speed_rps: 18.0 },
+            Mesh3d(meshes.add(Cuboid::new(0.22, 0.08, 8.6))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgb(0.08, 0.08, 0.09),
+                perceptual_roughness: 0.30,
+                ..default()
+            })),
+            Transform::from_xyz(-6.2, 1.3, -0.1),
+        ));
+        parent.spawn((
+            Name::new("Right Rotor"),
+            RotorDisk { speed_rps: 18.0 },
+            Mesh3d(meshes.add(Cuboid::new(0.22, 0.08, 8.6))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgb(0.08, 0.08, 0.09),
+                perceptual_roughness: 0.30,
+                ..default()
+            })),
+            Transform::from_xyz(6.2, 1.3, -0.1),
+        ));
+        parent.spawn((
+            Name::new("Cockpit Canopy"),
+            Mesh3d(meshes.add(Capsule3d::new(0.78, 2.2))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgba(0.58, 0.74, 0.86, 0.32),
+                perceptual_roughness: 0.06,
+                metallic: 0.12,
+                alpha_mode: AlphaMode::Blend,
+                ..default()
+            })),
+            Transform::from_xyz(0.0, 0.72, -1.4)
+                .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+        ));
+    });
+
+    entity_id
+}
+
 pub fn spawn_overlay(commands: &mut Commands, title: &str) {
     commands.spawn((
         Name::new("Telemetry Overlay"),
@@ -373,6 +615,69 @@ pub fn spawn_overlay(commands: &mut Commands, title: &str) {
     ));
 }
 
+fn sync_pane_to_runtime(
+    pane: Res<FlightExamplePane>,
+    mut camera: Query<&mut FollowCamera>,
+    mut active_aircraft: Query<(
+        &mut FlightEnvironment,
+        &mut FlightAssist,
+        Option<&ContextActivity<ExamplePilot>>,
+    )>,
+) {
+    if !pane.is_changed() {
+        return;
+    }
+
+    if let Ok(mut follow) = camera.single_mut() {
+        follow.distance = pane.camera_distance;
+        follow.height = pane.camera_height;
+        follow.lateral_offset = pane.camera_lateral_offset;
+    }
+
+    let has_active = active_aircraft
+        .iter()
+        .any(|(_, _, activity)| activity.is_some_and(|activity| **activity));
+    let selected = if has_active {
+        active_aircraft
+            .iter_mut()
+            .find(|(_, _, activity)| activity.is_some_and(|activity| **activity))
+    } else {
+        active_aircraft.iter_mut().next()
+    };
+    let Some((mut environment, mut assist, _)) = selected else {
+        return;
+    };
+
+    environment.wind_world_mps.x = pane.wind_x_mps;
+    environment.wind_world_mps.z = pane.wind_z_mps;
+    environment.density_multiplier = pane.density_multiplier;
+
+    assist.wings_leveling = pane.wings_leveling;
+    assist.coordinated_turn = pane.coordinated_turn;
+    assist.hover_leveling = pane.hover_leveling;
+}
+
+fn update_pane_stats(
+    mut stats: ResMut<FlightExampleStats>,
+    active_aircraft: Query<(
+        &FlightTelemetry,
+        &FlightAeroState,
+        Option<&ContextActivity<ExamplePilot>>,
+    )>,
+) {
+    let active_first = active_aircraft
+        .iter()
+        .find(|(_, _, activity)| activity.is_some_and(|activity| **activity));
+    let Some((telemetry, aero, _)) = active_first.or_else(|| active_aircraft.iter().next()) else {
+        return;
+    };
+
+    stats.true_airspeed_mps = telemetry.true_airspeed_mps;
+    stats.altitude_msl_m = telemetry.altitude_msl_m;
+    stats.angle_of_attack_deg = aero.angle_of_attack_rad.to_degrees();
+    stats.vtol_transition = telemetry.vtol_transition;
+}
+
 pub fn update_single_overlay(
     title: &str,
     label: &str,
@@ -381,7 +686,7 @@ pub fn update_single_overlay(
     text: &mut Text,
 ) {
     text.0 = format!(
-        "{title}\n{label}\nTAS {:>6.1} m/s  IAS {:>6.1}\nAlt {:>6.1} m  AGL {:>6.1?}\nV/S {:>6.1}  AoA {:>6.1} deg\nSlip {:>6.1} deg  q {:>7.1} Pa\nThrottle {:>4.2}  Collective {:>4.2}\nGear {:>4.2} {}  Stalled {}\nKeys: Arrow keys pitch/roll, Q/E yaw, [/] power, G gear",
+        "{title}\n{label}\nTAS {:>6.1} m/s  IAS {:>6.1}\nAlt {:>6.1} m  AGL {:>6.1?}\nV/S {:>6.1}  AoA {:>6.1} deg\nSlip {:>6.1} deg  q {:>7.1} Pa\nThrottle {:>4.2}  Collective {:>4.2}  VTOL {:>4.2}\nGear {:>4.2} {}  Stalled {}\nKeys: Arrow keys pitch/roll, Q/E yaw, [/] power, ,/. transition, G gear",
         telemetry.true_airspeed_mps,
         telemetry.indicated_airspeed_mps,
         telemetry.altitude_msl_m,
@@ -392,6 +697,7 @@ pub fn update_single_overlay(
         aero.dynamic_pressure_pa,
         telemetry.throttle,
         telemetry.collective,
+        telemetry.vtol_transition,
         telemetry.gear_position,
         if telemetry.gear_deployed {
             "down"
@@ -538,6 +844,26 @@ fn adjust_power(
     if helicopter.is_some() {
         input.collective = (input.collective + delta).clamp(0.0, 1.0);
     }
+    if fixed_wing.is_none() && helicopter.is_none() {
+        input.throttle = (input.throttle + delta).clamp(0.0, 1.0);
+        input.collective = (input.collective + delta).clamp(0.0, 1.0);
+    }
+}
+
+fn adjust_transition(
+    trigger: On<Fire<TransitionAdjustAction>>,
+    time: Res<Time>,
+    mut query: Query<(&mut FlightControlInput, Option<&VtolAircraft>), With<ExamplePilot>>,
+) {
+    let Ok((mut input, vtol)) = query.get_mut(trigger.context) else {
+        return;
+    };
+    if vtol.is_none() {
+        return;
+    }
+
+    let delta = trigger.value * time.delta_secs() * 0.45;
+    input.vtol_transition = (input.vtol_transition + delta).clamp(0.0, 1.0);
 }
 
 fn trigger_gear_toggle(

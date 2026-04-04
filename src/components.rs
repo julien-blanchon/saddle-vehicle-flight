@@ -64,6 +64,7 @@ pub struct FlightControlInput {
     pub yaw: f32,
     pub throttle: f32,
     pub collective: f32,
+    pub vtol_transition: f32,
     pub pitch_trim: f32,
     pub roll_trim: f32,
     pub yaw_trim: f32,
@@ -124,6 +125,7 @@ pub(crate) struct ResolvedFlightControls {
     pub yaw: f32,
     pub throttle: f32,
     pub collective: f32,
+    pub transition: f32,
     pub gear_toggle_latched: bool,
 }
 

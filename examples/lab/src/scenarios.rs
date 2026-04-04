@@ -1,10 +1,10 @@
 use bevy::prelude::*;
+use bevy_enhanced_input::prelude::ContextActivity;
 use saddle_bevy_e2e::{
     action::Action,
     actions::{assertions, inspect},
     scenario::Scenario,
 };
-use bevy_enhanced_input::prelude::ContextActivity;
 use saddle_vehicle_flight::{FlightControlInput, FlightKinematics, FlightTelemetry, StallState};
 
 use crate::{ActiveVehicle, LabState, support::ExamplePilot};
@@ -14,6 +14,7 @@ pub fn scenario_by_name(name: &str) -> Option<Scenario> {
         "flight_fixed_wing_smoke" => Some(build_fixed_wing_smoke()),
         "flight_stall_recovery" => Some(build_stall_recovery()),
         "flight_helicopter_hover" => Some(build_helicopter_hover()),
+        "flight_vtol_transition" => Some(build_vtol_transition()),
         _ => None,
     }
 }
@@ -23,6 +24,7 @@ pub fn list_scenarios() -> Vec<&'static str> {
         "flight_fixed_wing_smoke",
         "flight_stall_recovery",
         "flight_helicopter_hover",
+        "flight_vtol_transition",
     ]
 }
 
@@ -238,6 +240,72 @@ fn build_helicopter_hover() -> Scenario {
         .build()
 }
 
+fn build_vtol_transition() -> Scenario {
+    Scenario::builder("flight_vtol_transition")
+        .description("Verify the VTOL can lift into hover, tilt forward, and build useful forward speed during transition.")
+        .then(Action::Custom(Box::new(|world: &mut World| {
+            set_active_vehicle(world, ActiveVehicle::Vtol);
+            let vtol = world.resource::<LabState>().vtol;
+            reset_vehicle(
+                world,
+                vtol,
+                Transform::from_xyz(28.0, 2.1, -18.0).with_rotation(Quat::from_rotation_y(-0.22)),
+                Vec3::ZERO,
+            );
+            set_controls(
+                world,
+                vtol,
+                FlightControlInput {
+                    throttle: 1.0,
+                    collective: 1.0,
+                    vtol_transition: 0.0,
+                    ..default()
+                },
+            );
+        })))
+        .then(Action::WaitFrames(150))
+        .then(assertions::custom("vtol lifted off", |world| {
+            let vtol = world.resource::<LabState>().vtol;
+            world
+                .get::<FlightTelemetry>(vtol)
+                .is_some_and(|telemetry| telemetry.altitude_msl_m > 2.25)
+        }))
+        .then(Action::Screenshot("vtol_hover".into()))
+        .then(Action::WaitFrames(1))
+        .then(Action::Custom(Box::new(|world: &mut World| {
+            let vtol = world.resource::<LabState>().vtol;
+            set_controls(
+                world,
+                vtol,
+                FlightControlInput {
+                    pitch: -0.08,
+                    throttle: 0.92,
+                    collective: 0.62,
+                    vtol_transition: 0.92,
+                    ..default()
+                },
+            );
+        })))
+        .then(Action::WaitFrames(210))
+        .then(assertions::custom("vtol transitioned forward", |world| {
+            let vtol = world.resource::<LabState>().vtol;
+            let moved = world.get::<Transform>(vtol).is_some_and(|transform| {
+                transform.translation.z < -26.0
+            });
+            let telemetry = world.get::<FlightTelemetry>(vtol);
+            moved
+                && telemetry.is_some_and(|telemetry| {
+                    telemetry.true_airspeed_mps > 18.0
+                        && telemetry.vtol_transition > 0.75
+                })
+        }))
+        .then(Action::Screenshot("vtol_transition".into()))
+        .then(Action::WaitFrames(1))
+        .then(inspect::log_component::<FlightTelemetry>("vtol_transition_telemetry"))
+        .then(assertions::log_summary("flight_vtol_transition summary"))
+        .build()
+}
+
 fn set_active_vehicle(world: &mut World, active: ActiveVehicle) {
     let state = *world.resource::<LabState>();
     world.resource_mut::<LabState>().active = active;
@@ -252,10 +320,16 @@ fn set_active_vehicle(world: &mut World, active: ActiveVehicle) {
     } else {
         ContextActivity::<ExamplePilot>::INACTIVE
     };
+    let vtol_activity = if active == ActiveVehicle::Vtol {
+        ContextActivity::<ExamplePilot>::ACTIVE
+    } else {
+        ContextActivity::<ExamplePilot>::INACTIVE
+    };
     world.entity_mut(state.plane).insert(plane_activity);
     world
         .entity_mut(state.helicopter)
         .insert(helicopter_activity);
+    world.entity_mut(state.vtol).insert(vtol_activity);
 }
 
 fn set_controls(world: &mut World, entity: Entity, controls: FlightControlInput) {

@@ -1,9 +1,51 @@
 use crate::{
     components::{FlightControlInput, LandingGearState, ResolvedFlightControls},
-    config::{FixedWingAircraft, HelicopterAircraft},
+    config::{FixedWingAircraft, HelicopterAircraft, VtolAircraft},
     math::{move_towards, shape_axis},
 };
 use bevy::prelude::*;
+
+fn blend_response(
+    hover: crate::FlightControlResponse,
+    wing: crate::FlightControlResponse,
+    blend: f32,
+) -> crate::FlightControlResponse {
+    crate::FlightControlResponse {
+        pitch_rate_per_second: hover
+            .pitch_rate_per_second
+            .lerp(wing.pitch_rate_per_second, blend),
+        roll_rate_per_second: hover
+            .roll_rate_per_second
+            .lerp(wing.roll_rate_per_second, blend),
+        yaw_rate_per_second: hover
+            .yaw_rate_per_second
+            .lerp(wing.yaw_rate_per_second, blend),
+        pitch_exponent: hover.pitch_exponent.lerp(wing.pitch_exponent, blend),
+        roll_exponent: hover.roll_exponent.lerp(wing.roll_exponent, blend),
+        yaw_exponent: hover.yaw_exponent.lerp(wing.yaw_exponent, blend),
+    }
+}
+
+fn blend_power(
+    hover: crate::PowerResponse,
+    wing: crate::PowerResponse,
+    blend: f32,
+) -> crate::PowerResponse {
+    crate::PowerResponse {
+        throttle_rise_per_second: hover
+            .throttle_rise_per_second
+            .lerp(wing.throttle_rise_per_second, blend),
+        throttle_fall_per_second: hover
+            .throttle_fall_per_second
+            .lerp(wing.throttle_fall_per_second, blend),
+        collective_rise_per_second: hover
+            .collective_rise_per_second
+            .lerp(wing.collective_rise_per_second, blend),
+        collective_fall_per_second: hover
+            .collective_fall_per_second
+            .lerp(wing.collective_fall_per_second, blend),
+    }
+}
 
 pub(crate) fn resolve_controls(
     time: Res<Time>,
@@ -13,6 +55,7 @@ pub(crate) fn resolve_controls(
         &mut LandingGearState,
         Option<&FixedWingAircraft>,
         Option<&HelicopterAircraft>,
+        Option<&VtolAircraft>,
     )>,
 ) {
     let dt = time.delta_secs();
@@ -20,22 +63,44 @@ pub(crate) fn resolve_controls(
         return;
     }
 
-    for (input, mut resolved, mut gear, fixed_wing, helicopter) in &mut query {
-        let (response, power, contact) = if let Some(aircraft) = fixed_wing {
-            (
-                aircraft.control_response,
-                aircraft.power_response,
-                aircraft.landing_contact,
-            )
-        } else if let Some(aircraft) = helicopter {
-            (
-                aircraft.control_response,
-                aircraft.power_response,
-                aircraft.contact_geometry,
-            )
-        } else {
-            continue;
-        };
+    for (input, mut resolved, mut gear, fixed_wing, helicopter, vtol) in &mut query {
+        let (response, power, contact, target_transition, transition_rate_per_second) =
+            if let Some(aircraft) = fixed_wing {
+                (
+                    aircraft.control_response,
+                    aircraft.power_response,
+                    aircraft.landing_contact,
+                    1.0,
+                    0.0,
+                )
+            } else if let Some(aircraft) = helicopter {
+                (
+                    aircraft.control_response,
+                    aircraft.power_response,
+                    aircraft.contact_geometry,
+                    0.0,
+                    0.0,
+                )
+            } else if let Some(aircraft) = vtol {
+                let blend = aircraft.wingborne_blend(resolved.transition);
+                (
+                    blend_response(
+                        aircraft.rotorcraft.control_response,
+                        aircraft.fixed_wing.control_response,
+                        blend,
+                    ),
+                    blend_power(
+                        aircraft.rotorcraft.power_response,
+                        aircraft.fixed_wing.power_response,
+                        blend,
+                    ),
+                    aircraft.contact_geometry,
+                    input.vtol_transition.clamp(0.0, 1.0),
+                    aircraft.transition_rate_per_second,
+                )
+            } else {
+                continue;
+            };
 
         let desired_pitch = shape_axis(input.pitch, response.pitch_exponent);
         let desired_roll = shape_axis(input.roll, response.roll_exponent);
@@ -70,6 +135,15 @@ pub(crate) fn resolve_controls(
                 power.collective_fall_per_second
             } * dt,
         );
+        resolved.transition = if transition_rate_per_second <= 0.0 {
+            target_transition
+        } else {
+            move_towards(
+                resolved.transition,
+                target_transition,
+                transition_rate_per_second * dt,
+            )
+        };
 
         if let Some(requested) = input.requested_gear_down {
             gear.target_deployed = requested;
