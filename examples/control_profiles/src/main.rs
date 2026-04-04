@@ -124,8 +124,14 @@ fn setup(
 
 fn script_fixed_wing_profiles(
     time: Res<Time>,
-    mut trainer: Query<&mut FlightControlInput, With<FixedWingTrainerProfile>>,
-    mut racer: Query<&mut FlightControlInput, With<FixedWingArcadeProfile>>,
+    mut trainer: Query<
+        &mut FlightControlInput,
+        (With<FixedWingTrainerProfile>, Without<FixedWingArcadeProfile>),
+    >,
+    mut racer: Query<
+        &mut FlightControlInput,
+        (With<FixedWingArcadeProfile>, Without<FixedWingTrainerProfile>),
+    >,
 ) {
     let t = time.elapsed_secs();
 
@@ -146,8 +152,14 @@ fn script_fixed_wing_profiles(
 
 fn script_helicopter_profiles(
     time: Res<Time>,
-    mut utility: Query<&mut FlightControlInput, With<HelicopterUtilityProfile>>,
-    mut arcade: Query<&mut FlightControlInput, With<HelicopterArcadeProfile>>,
+    mut utility: Query<
+        &mut FlightControlInput,
+        (With<HelicopterUtilityProfile>, Without<HelicopterArcadeProfile>),
+    >,
+    mut arcade: Query<
+        &mut FlightControlInput,
+        (With<HelicopterArcadeProfile>, Without<HelicopterUtilityProfile>),
+    >,
 ) {
     let t = time.elapsed_secs();
 
