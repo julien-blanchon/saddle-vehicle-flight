@@ -10,6 +10,7 @@ bevy_flair = { workspace = true }
 bevy_enhanced_input = { workspace = true }
 bevy_input_focus = { workspace = true }
 saddle-pane = { workspace = true }
+saddle-camera-third-person-camera = { workspace = true }
 saddle-vehicle-flight = { workspace = true }
 bevy_ui_widgets = { workspace = true }
 

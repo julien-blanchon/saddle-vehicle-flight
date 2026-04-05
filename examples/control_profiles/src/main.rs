@@ -126,11 +126,17 @@ fn script_fixed_wing_profiles(
     time: Res<Time>,
     mut trainer: Query<
         &mut FlightControlInput,
-        (With<FixedWingTrainerProfile>, Without<FixedWingArcadeProfile>),
+        (
+            With<FixedWingTrainerProfile>,
+            Without<FixedWingArcadeProfile>,
+        ),
     >,
     mut racer: Query<
         &mut FlightControlInput,
-        (With<FixedWingArcadeProfile>, Without<FixedWingTrainerProfile>),
+        (
+            With<FixedWingArcadeProfile>,
+            Without<FixedWingTrainerProfile>,
+        ),
     >,
 ) {
     let t = time.elapsed_secs();
@@ -154,11 +160,17 @@ fn script_helicopter_profiles(
     time: Res<Time>,
     mut utility: Query<
         &mut FlightControlInput,
-        (With<HelicopterUtilityProfile>, Without<HelicopterArcadeProfile>),
+        (
+            With<HelicopterUtilityProfile>,
+            Without<HelicopterArcadeProfile>,
+        ),
     >,
     mut arcade: Query<
         &mut FlightControlInput,
-        (With<HelicopterArcadeProfile>, Without<HelicopterUtilityProfile>),
+        (
+            With<HelicopterArcadeProfile>,
+            Without<HelicopterUtilityProfile>,
+        ),
     >,
 ) {
     let t = time.elapsed_secs();
@@ -208,5 +220,7 @@ fn update_overlay(
         String::new(),
     ];
     lines.extend(rows);
+    lines.push(String::new());
+    lines.push("Mouse: orbit camera  Scroll: zoom".to_string());
     text.0 = lines.join("\n");
 }

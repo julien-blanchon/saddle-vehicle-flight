@@ -154,6 +154,28 @@ Defaults below refer to each type's `Default` implementation unless the section 
 | `wingborne_blend_start` | `f32` | normalized | `0.22` | `0..=1` | Transition point where fixed-wing lift and torque blending begin | Too low makes wings dominate before the aircraft has speed |
 | `wingborne_blend_end` | `f32` | normalized | `0.72` | `>= start`, `<= 1` | Transition point where the aircraft is treated as fully wing-borne | Too high leaves hover behavior active for too long |
 
+## `SpacecraftConfig`
+
+`Default` for `SpacecraftConfig` is `SpacecraftConfig::fighter()`.
+
+| Field | Type | Unit | Default (`fighter`) | Valid range | Effect |
+| --- | --- | --- | --- | --- | --- |
+| `max_thrust_newtons` | `f32` | N | `24000.0` | `>= 0` | Main engine thrust along the forward axis |
+| `rcs_thrust_newtons` | `f32` | N | `4000.0` | `>= 0` | Reaction control system thrust for translation (yaw + collective inputs) |
+| `pitch_torque_authority` | `f32` | N m | `8000.0` | `>= 0` | Pitch RCS torque authority |
+| `roll_torque_authority` | `f32` | N m | `6000.0` | `>= 0` | Roll RCS torque authority |
+| `yaw_torque_authority` | `f32` | N m | `5000.0` | `>= 0` | Yaw RCS torque authority |
+| `angular_damping` | `Vec3` | gain | `(0.25, 0.35, 0.20)` | each `>= 0` | Body-axis angular rate damping |
+| `linear_drag_coefficient` | `f32` | 1/s | `0.0` | `>= 0` | Optional linear drag for arcade game-feel (0.0 = pure Newtonian) |
+| `control_response` | `FlightControlResponse` | n/a | default response | see above | Input slew and shaping |
+| `power_response` | `PowerResponse` | n/a | default response | see above | Throttle lag |
+
+### Spacecraft Presets
+
+- `fighter()` — agile fighter with 2000 kg mass and high thrust-to-weight
+- `cargo()` — heavy cargo ship (8000 kg) with low angular authority and high linear drag
+- `arcade_fighter()` — very high authority, fast response, and zero drag for arcade space combat
+
 ## Runtime Outputs
 
 These are not authoring inputs, but consumers commonly read them directly:
@@ -168,7 +190,7 @@ These are not authoring inputs, but consumers commonly read them directly:
 
 ## Required Runtime Components
 
-Spawning `FixedWingAircraft`, `HelicopterAircraft`, or `VtolAircraft` automatically requires:
+Spawning `FixedWingAircraft`, `HelicopterAircraft`, `VtolAircraft`, or `SpacecraftConfig` automatically requires:
 
 - `Transform`
 - `GlobalTransform`

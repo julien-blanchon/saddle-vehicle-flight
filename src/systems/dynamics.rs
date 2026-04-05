@@ -3,11 +3,11 @@ use crate::{
         FlightAssist, FlightBody, FlightControlInput, FlightEnvironment, FlightKinematics,
         LandingGearState, ResolvedFlightControls, StallState,
     },
-    config::{FixedWingAircraft, HelicopterAircraft, VtolAircraft},
+    config::{FixedWingAircraft, HelicopterAircraft, SpacecraftConfig, VtolAircraft},
     math::move_towards,
     model::{
         common::sample_motion, fixed_wing::evaluate_fixed_wing_with_motion,
-        helicopter::evaluate_helicopter, vtol::evaluate_vtol,
+        helicopter::evaluate_helicopter, spacecraft::evaluate_spacecraft, vtol::evaluate_vtol,
     },
     telemetry::{FlightAeroState, FlightForces},
 };
@@ -113,6 +113,63 @@ pub(crate) fn compute_helicopter_dynamics(
             transform,
             *body,
             *aircraft,
+            *controls,
+            *control_input,
+            *assist,
+            *aero,
+            *gear,
+        );
+        stall.amount = 0.0;
+        stall.is_stalled = false;
+        *aero = evaluated.aero;
+        *forces = evaluated.forces;
+    }
+}
+
+pub(crate) fn compute_spacecraft_dynamics(
+    mut query: Query<
+        (
+            &Transform,
+            &FlightBody,
+            &SpacecraftConfig,
+            &ResolvedFlightControls,
+            &FlightControlInput,
+            &FlightAssist,
+            &FlightKinematics,
+            &FlightEnvironment,
+            &LandingGearState,
+            &mut StallState,
+            &mut FlightAeroState,
+            &mut FlightForces,
+        ),
+        (
+            Without<FixedWingAircraft>,
+            Without<HelicopterAircraft>,
+            Without<VtolAircraft>,
+        ),
+    >,
+) {
+    for (
+        transform,
+        body,
+        spacecraft,
+        controls,
+        control_input,
+        assist,
+        kinematics,
+        environment,
+        gear,
+        mut stall,
+        mut aero,
+        mut forces,
+    ) in &mut query
+    {
+        let motion = sample_motion(transform, kinematics, environment);
+        let evaluated = evaluate_spacecraft(
+            motion,
+            transform,
+            *body,
+            *spacecraft,
             *controls,
             *control_input,
             *assist,

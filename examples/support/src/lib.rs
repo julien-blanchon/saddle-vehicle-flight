@@ -5,10 +5,16 @@ use bevy_enhanced_input::prelude::{
     Action, Bidirectional, Bindings, Cancel as InputCancel, Complete, ContextActivity, Fire,
     InputAction, Press as InputPress, Start, actions, bindings,
 };
+use saddle_camera_third_person_camera::{
+    AutoRecenterSettings, CollisionSettings, FollowAlignment, OrbitSettings, SmoothingSettings,
+    ThirdPersonCamera, ThirdPersonCameraPlugin, ThirdPersonCameraSettings, ThirdPersonCameraTarget,
+    ZoomSettings,
+};
 use saddle_pane::prelude::*;
 use saddle_vehicle_flight::{
     FixedWingAircraft, FlightAeroState, FlightAssist, FlightControlInput, FlightEnvironment,
-    FlightForces, FlightPlugin, FlightTelemetry, HelicopterAircraft, VtolAircraft,
+    FlightForces, FlightPlugin, FlightTelemetry, HelicopterAircraft, SpacecraftConfig,
+    VtolAircraft,
 };
 
 #[derive(Resource, Clone, Pane)]
@@ -26,12 +32,6 @@ pub struct FlightExamplePane {
     pub coordinated_turn: f32,
     #[pane(slider, min = 0.0, max = 1.0, step = 0.02)]
     pub hover_leveling: f32,
-    #[pane(slider, min = 8.0, max = 30.0, step = 0.25)]
-    pub camera_distance: f32,
-    #[pane(slider, min = 2.0, max = 12.0, step = 0.25)]
-    pub camera_height: f32,
-    #[pane(slider, min = -6.0, max = 6.0, step = 0.1)]
-    pub camera_lateral_offset: f32,
 }
 
 impl Default for FlightExamplePane {
@@ -43,9 +43,6 @@ impl Default for FlightExamplePane {
             wings_leveling: 0.18,
             coordinated_turn: 0.16,
             hover_leveling: 0.20,
-            camera_distance: 18.0,
-            camera_height: 6.0,
-            camera_lateral_offset: 0.0,
         }
     }
 }
@@ -83,13 +80,6 @@ pub fn pane_plugins() -> (
 pub struct ExamplePilot;
 
 #[derive(Component)]
-pub struct FollowCamera {
-    pub distance: f32,
-    pub height: f32,
-    pub lateral_offset: f32,
-}
-
-#[derive(Component)]
 pub struct RotorDisk {
     pub speed_rps: f32,
 }
@@ -123,11 +113,16 @@ pub fn configure_example_app(app: &mut App) {
 }
 
 pub fn configure_example_app_with_follow_camera(app: &mut App, enable_follow_camera: bool) {
-    app.add_plugins((DefaultPlugins, FlightPlugin::default(), pane_plugins()))
-        .insert_resource(FlightExamplePane::default())
-        .insert_resource(FlightExampleStats::default())
-        .register_pane::<FlightExamplePane>()
-        .register_pane::<FlightExampleStats>();
+    app.add_plugins((
+        DefaultPlugins,
+        FlightPlugin::default(),
+        ThirdPersonCameraPlugin::default(),
+        pane_plugins(),
+    ))
+    .insert_resource(FlightExamplePane::default())
+    .insert_resource(FlightExampleStats::default())
+    .register_pane::<FlightExamplePane>()
+    .register_pane::<FlightExampleStats>();
     if !app.is_plugin_added::<bevy_enhanced_input::prelude::EnhancedInputPlugin>() {
         app.add_plugins(bevy_enhanced_input::prelude::EnhancedInputPlugin);
     }
@@ -151,7 +146,7 @@ pub fn configure_example_app_with_follow_camera(app: &mut App, enable_follow_cam
         )
         .add_systems(PostUpdate, clear_one_shot_controls);
     if enable_follow_camera {
-        app.add_systems(Update, follow_camera);
+        app.add_systems(Update, sync_camera_target);
     }
 }
 
@@ -262,13 +257,40 @@ pub fn spawn_lights_ground_and_camera(
     materials: &mut Assets<StandardMaterial>,
 ) {
     spawn_lights_and_ground(commands, meshes, materials);
+    // Spawn a chase camera using saddle-camera-third-person-camera
     commands.spawn((
         Name::new("Example Camera"),
-        Camera3d::default(),
-        FollowCamera {
-            distance: 18.0,
-            height: 6.0,
-            lateral_offset: 0.0,
+        ThirdPersonCamera::new(18.0, 0.0, -0.32),
+        ThirdPersonCameraSettings {
+            orbit: OrbitSettings {
+                yaw_speed: 1.2,
+                pitch_speed: 1.1,
+                min_pitch: -1.45,
+                max_pitch: 0.10,
+                ..default()
+            },
+            smoothing: SmoothingSettings {
+                orientation_smoothing: 8.0,
+                target_follow_smoothing: 6.0,
+                zoom_smoothing: 12.0,
+                ..default()
+            },
+            zoom: ZoomSettings {
+                min_distance: 6.0,
+                max_distance: 45.0,
+                default_distance: 18.0,
+                step: 2.0,
+            },
+            collision: CollisionSettings {
+                enabled: false,
+                ..default()
+            },
+            auto_recenter: AutoRecenterSettings {
+                enabled: true,
+                inactivity_seconds: 1.5,
+                follow_alignment: FollowAlignment::TargetForward,
+            },
+            ..default()
         },
         Transform::from_xyz(-15.0, 8.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
@@ -607,7 +629,7 @@ pub fn spawn_overlay(commands: &mut Commands, title: &str) {
             position_type: PositionType::Absolute,
             left: Val::Px(18.0),
             top: Val::Px(18.0),
-            width: Val::Px(420.0),
+            width: Val::Px(460.0),
             padding: UiRect::all(Val::Px(12.0)),
             ..default()
         },
@@ -615,9 +637,39 @@ pub fn spawn_overlay(commands: &mut Commands, title: &str) {
     ));
 }
 
+/// Points the `ThirdPersonCamera`'s target at the currently active pilot.
+fn sync_camera_target(
+    mut commands: Commands,
+    pilots: Query<(Entity, Option<&ContextActivity<ExamplePilot>>), With<ExamplePilot>>,
+    cameras: Query<(Entity, Option<&ThirdPersonCameraTarget>), With<ThirdPersonCamera>>,
+) {
+    // Find the active pilot entity
+    let active_pilot = pilots
+        .iter()
+        .find(|(_, activity)| activity.is_some_and(|a| **a))
+        .or_else(|| pilots.iter().next());
+
+    let Some((pilot_id, _)) = active_pilot else {
+        return;
+    };
+
+    // Find the camera and update its target
+    let Some((camera_id, existing_target)) = cameras.iter().next() else {
+        return;
+    };
+
+    // Skip if already targeting the right entity
+    if existing_target.is_some_and(|t| t.target == pilot_id) {
+        return;
+    }
+
+    commands
+        .entity(camera_id)
+        .insert(ThirdPersonCameraTarget::new(pilot_id));
+}
+
 fn sync_pane_to_runtime(
     pane: Res<FlightExamplePane>,
-    mut camera: Query<&mut FollowCamera>,
     mut active_aircraft: Query<(
         &mut FlightEnvironment,
         &mut FlightAssist,
@@ -626,12 +678,6 @@ fn sync_pane_to_runtime(
 ) {
     if !pane.is_changed() {
         return;
-    }
-
-    if let Ok(mut follow) = camera.single_mut() {
-        follow.distance = pane.camera_distance;
-        follow.height = pane.camera_height;
-        follow.lateral_offset = pane.camera_lateral_offset;
     }
 
     let has_active = active_aircraft
@@ -686,7 +732,7 @@ pub fn update_single_overlay(
     text: &mut Text,
 ) {
     text.0 = format!(
-        "{title}\n{label}\nTAS {:>6.1} m/s  IAS {:>6.1}\nAlt {:>6.1} m  AGL {:>6.1?}\nV/S {:>6.1}  AoA {:>6.1} deg\nSlip {:>6.1} deg  q {:>7.1} Pa\nThrottle {:>4.2}  Collective {:>4.2}  VTOL {:>4.2}\nGear {:>4.2} {}  Stalled {}\nKeys: Arrow keys pitch/roll, Q/E yaw, [/] power, ,/. transition, G gear",
+        "{title}\n{label}\n\nTAS {:>6.1} m/s  IAS {:>6.1}\nAlt {:>6.1} m  AGL {:>6.1?}\nV/S {:>6.1}  AoA {:>6.1} deg\nSlip {:>6.1} deg  q {:>7.1} Pa\nThrottle {:>4.2}  Collective {:>4.2}  VTOL {:>4.2}\nGear {:>4.2} {}  Stalled {}\n\nControls:\n  Arrow keys: pitch/roll\n  Q/E: yaw\n  [ / ]: throttle or collective\n  , / .: VTOL transition\n  G: toggle gear\n  Mouse: orbit camera\n  Scroll: zoom",
         telemetry.true_airspeed_mps,
         telemetry.indicated_airspeed_mps,
         telemetry.altitude_msl_m,
@@ -830,21 +876,22 @@ fn adjust_power(
             &mut FlightControlInput,
             Option<&FixedWingAircraft>,
             Option<&HelicopterAircraft>,
+            Option<&SpacecraftConfig>,
         ),
         With<ExamplePilot>,
     >,
 ) {
-    let Ok((mut input, fixed_wing, helicopter)) = query.get_mut(trigger.context) else {
+    let Ok((mut input, fixed_wing, helicopter, spacecraft)) = query.get_mut(trigger.context) else {
         return;
     };
     let delta = trigger.value * time.delta_secs() * 0.6;
-    if fixed_wing.is_some() {
+    if fixed_wing.is_some() || spacecraft.is_some() {
         input.throttle = (input.throttle + delta).clamp(0.0, 1.0);
     }
     if helicopter.is_some() {
         input.collective = (input.collective + delta).clamp(0.0, 1.0);
     }
-    if fixed_wing.is_none() && helicopter.is_none() {
+    if fixed_wing.is_none() && helicopter.is_none() && spacecraft.is_none() {
         input.throttle = (input.throttle + delta).clamp(0.0, 1.0);
         input.collective = (input.collective + delta).clamp(0.0, 1.0);
     }
@@ -886,33 +933,4 @@ fn spin_rotors(time: Res<Time>, mut query: Query<(&RotorDisk, &mut Transform)>) 
     for (rotor, mut transform) in &mut query {
         transform.rotate_y(rotor.speed_rps * std::f32::consts::TAU * time.delta_secs());
     }
-}
-
-fn follow_camera(
-    time: Res<Time>,
-    target: Query<
-        (&Transform, Option<&ContextActivity<ExamplePilot>>),
-        (With<ExamplePilot>, Without<Camera3d>),
-    >,
-    mut camera: Query<(&FollowCamera, &mut Transform), (With<Camera3d>, Without<ExamplePilot>)>,
-) {
-    let Some(target) = target.iter().find_map(|(transform, activity)| {
-        let active = activity.is_none_or(|activity| **activity);
-        active.then_some(transform)
-    }) else {
-        return;
-    };
-    let Ok((follow, mut transform)) = camera.single_mut() else {
-        return;
-    };
-
-    let desired = target.translation - target.forward() * follow.distance
-        + Vec3::Y * follow.height
-        + target.right() * follow.lateral_offset;
-    let alpha = 1.0 - (-4.0 * time.delta_secs()).exp();
-    transform.translation = transform.translation.lerp(desired, alpha);
-    transform.look_at(
-        target.translation + target.forward() * 8.0 + Vec3::Y * 1.6,
-        Vec3::Y,
-    );
 }

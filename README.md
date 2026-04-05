@@ -1,6 +1,6 @@
 # Saddle Vehicle Flight
 
-Reusable aircraft flight toolkit for Bevy covering fixed-wing, helicopter, and VTOL handling, US Standard Atmosphere 1976 sampling, normalized pilot controls, instrument-ready telemetry, and crate-local E2E verification.
+Reusable aircraft flight toolkit for Bevy covering fixed-wing, helicopter, VTOL, and spacecraft handling, US Standard Atmosphere 1976 sampling, normalized pilot controls, instrument-ready telemetry, and crate-local E2E verification.
 
 The crate is intentionally backend-agnostic. It owns aerodynamic math, control shaping, telemetry, and a lightweight internal rigid-body integrator. If a game wants Avian or another physics backend, the intended pattern is to keep this crate's force and torque outputs and swap only the application layer.
 
@@ -75,6 +75,7 @@ For examples and crate-local labs, `FlightPlugin::default()` is the always-on en
 | `FixedWingAircraft` | Fixed-wing configuration component with `trainer()` and `arcade_racer()` presets |
 | `HelicopterAircraft` | Helicopter configuration component with `utility()` and `arcade()` presets |
 | `VtolAircraft` | Tiltrotor / transition aircraft configuration with `tiltrotor_transport()` preset |
+| `SpacecraftConfig` | Pure 6-DOF spacecraft configuration with `fighter()`, `cargo()`, and `arcade_fighter()` presets |
 | `FlightBody` | Mass, inertia, gravity, and integration-mode inputs |
 | `FlightEnvironment` | Wind, gust, density multiplier, and optional surface altitude |
 | `FlightControlInput` | Normalized pilot controls plus trim, VTOL transition, and gear requests |
@@ -88,20 +89,15 @@ For examples and crate-local labs, `FlightPlugin::default()` is the always-on en
 | `FlightControlResponse`, `PowerResponse`, `ContactGeometry` | Shared response-curve and contact tuning structs |
 | `StallEntered`, `StallRecovered`, `GearStateChanged` | Cross-crate messages for common gameplay reactions |
 
-`FixedWingAircraft`, `HelicopterAircraft`, and `VtolAircraft` auto-require the runtime components they need, so a spawn only needs the aircraft config, a `FlightBody`, and a `Transform` unless the caller wants to override defaults.
+`FixedWingAircraft`, `HelicopterAircraft`, `VtolAircraft`, and `SpacecraftConfig` auto-require the runtime components they need, so a spawn only needs the aircraft config, a `FlightBody`, and a `Transform` unless the caller wants to override defaults.
 
 ## Supported Flight Models
 
-- Fixed-wing:
-  lift and induced drag from angle of attack and dynamic pressure
-- Fixed-wing:
-  stall hysteresis, post-stall lift degradation, sideslip force, control-surface torque, ground effect, and landing-gear drag
-- Helicopter:
-  collective-driven main lift, cyclic-style pitch/roll/yaw torque inputs, translational lift, anti-torque, ground effect, and skid/gear contact
-- VTOL:
-  tiltrotor-style transition blending with shared runway contact, hover control, wing-borne lift, and instrument-visible transition state
-- Shared:
-  wind and gust input, throttle or collective lag, trim biases, assist torques, telemetry, and runtime force inspection
+- **Fixed-wing**: lift and induced drag from angle of attack and dynamic pressure, stall hysteresis, post-stall lift degradation, sideslip force, control-surface torque, ground effect, and landing-gear drag. Presets: `trainer()` (realistic) and `arcade_racer()` (no-stall, high authority).
+- **Helicopter**: collective-driven main lift, cyclic-style pitch/roll/yaw torque inputs, translational lift, anti-torque, ground effect, and skid/gear contact. Presets: `utility()` (realistic) and `arcade()` (snappy, reduced inertia).
+- **VTOL**: tiltrotor-style transition blending with shared runway contact, hover control, wing-borne lift, and instrument-visible transition state. Preset: `tiltrotor_transport()`.
+- **Spacecraft**: pure 6-DOF thrust and RCS, no atmosphere, configurable linear drag for game-feel. Presets: `fighter()`, `cargo()`, `arcade_fighter()`.
+- **Shared**: wind and gust input, throttle or collective lag, trim biases, assist torques, telemetry, and runtime force inspection.
 
 ## Examples
 

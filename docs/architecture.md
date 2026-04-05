@@ -12,6 +12,7 @@ Pure or mostly pure logic:
 4. `model/fixed_wing.rs`
 5. `model/helicopter.rs`
 6. `model/vtol.rs`
+7. `model/spacecraft.rs`
 
 Bevy-facing orchestration:
 
@@ -31,7 +32,7 @@ FlightControlInput
   -> ResolveControls
   -> FlightEnvironment / atmosphere sample
   -> sample body-relative motion
-  -> fixed-wing, helicopter, or VTOL model path
+  -> fixed-wing, helicopter, VTOL, or spacecraft model path
   -> FlightAeroState + FlightForces
   -> integrate or hand off to external physics
   -> FlightTelemetry
@@ -139,6 +140,20 @@ The helicopter path is intentionally generic. It does not simulate blade-element
 5. wing-borne lift and airplane-style torques blend in over the configured transition window
 
 That makes the VTOL model intentionally game-ready rather than study-level. It is aimed at tiltrotor transports and arcade cockpit demos, not full prop-rotor certification-grade simulation.
+
+## Spacecraft Path
+
+`compute_spacecraft_dynamics` provides a pure 6-DOF thruster model with no atmosphere:
+
+1. main thrust along the body forward axis, scaled by throttle
+2. RCS translation from yaw and collective inputs
+3. configurable angular torque authority for pitch, roll, and yaw
+4. configurable angular damping for rate stabilization
+5. optional linear drag coefficient for arcade game-feel (0.0 = pure Newtonian)
+6. configurable gravity (can be zeroed for space environments)
+7. assist torques for wings-leveling and hover-leveling when configured
+
+The spacecraft path filters entities that have `SpacecraftConfig` but no `FixedWingAircraft`, `HelicopterAircraft`, or `VtolAircraft`, ensuring only one dynamics system runs per entity.
 
 ## Integration Boundary
 

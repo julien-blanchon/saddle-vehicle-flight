@@ -65,7 +65,7 @@ fn update_overlay(
     };
 
     text.0 = format!(
-        "Wind And Gusts Example\nTrainer in persistent crosswind with animated gusts\nTAS {:>6.1} m/s  IAS {:>6.1} m/s\nAlt {:>6.1} m  AoA {:>6.1} deg  Slip {:>6.1} deg\nWind [{:>5.1}, {:>5.1}, {:>5.1}] m/s\nGust [{:>5.1}, {:>5.1}, {:>5.1}] m/s\nq {:>7.1} Pa  Throttle {:>4.2}  Gear {:>4.2}\nKeys: Arrow keys pitch/roll, Q/E yaw, [/] power, G gear",
+        "Wind And Gusts Example\nTrainer in persistent crosswind with animated gusts\n\nTAS {:>6.1} m/s  IAS {:>6.1} m/s\nAlt {:>6.1} m  AoA {:>6.1} deg  Slip {:>6.1} deg\nWind [{:>5.1}, {:>5.1}, {:>5.1}] m/s\nGust [{:>5.1}, {:>5.1}, {:>5.1}] m/s\nq {:>7.1} Pa  Throttle {:>4.2}  Gear {:>4.2}\n\nControls:\n  Arrow keys: pitch/roll  Q/E: yaw\n  [ / ]: power  G: gear\n  Mouse: orbit camera  Scroll: zoom",
         telemetry.true_airspeed_mps,
         telemetry.indicated_airspeed_mps,
         telemetry.altitude_msl_m,

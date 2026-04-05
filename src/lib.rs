@@ -17,7 +17,7 @@ pub use components::{
 };
 pub use config::{
     ContactGeometry, FixedWingAircraft, FlightControlResponse, HelicopterAircraft, PowerResponse,
-    VtolAircraft,
+    SpacecraftConfig, VtolAircraft,
 };
 pub use messages::{GearStateChanged, StallEntered, StallRecovered};
 pub use telemetry::{FlightAeroState, FlightForces, FlightTelemetry};
@@ -97,6 +97,7 @@ impl Plugin for FlightPlugin {
             .register_type::<LandingGearState>()
             .register_type::<PowerResponse>()
             .register_type::<StallState>()
+            .register_type::<SpacecraftConfig>()
             .register_type::<VtolAircraft>()
             .add_systems(
                 self.activate_schedule,
@@ -129,6 +130,8 @@ impl Plugin for FlightPlugin {
                     systems::dynamics::compute_helicopter_dynamics
                         .in_set(FlightSystems::ComputeDynamics),
                     systems::dynamics::compute_vtol_dynamics.in_set(FlightSystems::ComputeDynamics),
+                    systems::dynamics::compute_spacecraft_dynamics
+                        .in_set(FlightSystems::ComputeDynamics),
                     (
                         systems::integration::integrate_motion
                             .in_set(FlightSystems::IntegrateMotion),

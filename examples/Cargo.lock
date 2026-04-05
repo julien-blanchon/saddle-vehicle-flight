@@ -4967,6 +4967,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "saddle-camera-third-person-camera"
+version = "0.1.0"
+source = "git+https://github.com/julien-blanchon/saddle-camera-third-person-camera#7fd0d2b0114965e82463bb51bcb5064e16c8723c"
+dependencies = [
+ "bevy",
+ "bevy_enhanced_input",
+]
+
+[[package]]
 name = "saddle-pane"
 version = "0.1.0"
 source = "git+https://github.com/julien-blanchon/saddle-pane#f0f0e26fdabf5d0463a59bba4f0958cba020f2b2"
@@ -5042,6 +5051,7 @@ name = "saddle-vehicle-flight-example-instruments"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "saddle-camera-third-person-camera",
  "saddle-pane",
  "saddle-vehicle-flight",
  "saddle-vehicle-flight-example-support",
@@ -5052,6 +5062,7 @@ name = "saddle-vehicle-flight-example-stall-recovery"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "saddle-camera-third-person-camera",
  "saddle-pane",
  "saddle-vehicle-flight",
  "saddle-vehicle-flight-example-support",
@@ -5066,6 +5077,7 @@ dependencies = [
  "bevy_flair",
  "bevy_input_focus",
  "bevy_ui_widgets",
+ "saddle-camera-third-person-camera",
  "saddle-pane",
  "saddle-vehicle-flight",
 ]

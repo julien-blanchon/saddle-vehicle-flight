@@ -17,7 +17,7 @@ use bevy_enhanced_input::{
 };
 use saddle_vehicle_flight::{FlightAeroState, FlightForces, FlightTelemetry};
 use support::{
-    ExamplePilot, FollowCamera, configure_example_app, draw_force_vectors, spawn_fixed_wing_demo,
+    ExamplePilot, configure_example_app, draw_force_vectors, spawn_fixed_wing_demo,
     spawn_helicopter_demo, spawn_lights_ground_and_camera, spawn_overlay, spawn_vtol_demo,
 };
 
@@ -153,45 +153,27 @@ fn select_fixed_wing(
     _: On<Start<SelectFixedWingAction>>,
     mut commands: Commands,
     mut state: ResMut<LabState>,
-    mut cameras: Query<&mut FollowCamera>,
 ) {
-    set_active_vehicle(
-        &mut commands,
-        &mut state,
-        &mut cameras,
-        ActiveVehicle::FixedWing,
-    );
+    set_active_vehicle(&mut commands, &mut state, ActiveVehicle::FixedWing);
 }
 
 fn select_helicopter(
     _: On<Start<SelectHelicopterAction>>,
     mut commands: Commands,
     mut state: ResMut<LabState>,
-    mut cameras: Query<&mut FollowCamera>,
 ) {
-    set_active_vehicle(
-        &mut commands,
-        &mut state,
-        &mut cameras,
-        ActiveVehicle::Helicopter,
-    );
+    set_active_vehicle(&mut commands, &mut state, ActiveVehicle::Helicopter);
 }
 
 fn select_vtol(
     _: On<Start<SelectVtolAction>>,
     mut commands: Commands,
     mut state: ResMut<LabState>,
-    mut cameras: Query<&mut FollowCamera>,
 ) {
-    set_active_vehicle(&mut commands, &mut state, &mut cameras, ActiveVehicle::Vtol);
+    set_active_vehicle(&mut commands, &mut state, ActiveVehicle::Vtol);
 }
 
-fn set_active_vehicle(
-    commands: &mut Commands,
-    state: &mut LabState,
-    cameras: &mut Query<&mut FollowCamera>,
-    active: ActiveVehicle,
-) {
+fn set_active_vehicle(commands: &mut Commands, state: &mut LabState, active: ActiveVehicle) {
     if state.active == active {
         return;
     }
@@ -218,26 +200,7 @@ fn set_active_vehicle(
         } else {
             ContextActivity::<ExamplePilot>::INACTIVE
         });
-
-    if let Ok(mut camera) = cameras.single_mut() {
-        match state.active {
-            ActiveVehicle::FixedWing => {
-                camera.distance = 18.0;
-                camera.height = 6.0;
-                camera.lateral_offset = 0.0;
-            }
-            ActiveVehicle::Helicopter => {
-                camera.distance = 15.0;
-                camera.height = 5.5;
-                camera.lateral_offset = -2.0;
-            }
-            ActiveVehicle::Vtol => {
-                camera.distance = 19.0;
-                camera.height = 7.0;
-                camera.lateral_offset = 1.5;
-            }
-        }
-    }
+    // Camera target is automatically switched by sync_camera_target in the support crate
 }
 
 fn update_overlay(

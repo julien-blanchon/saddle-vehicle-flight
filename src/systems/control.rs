@@ -1,6 +1,6 @@
 use crate::{
     components::{FlightControlInput, LandingGearState, ResolvedFlightControls},
-    config::{FixedWingAircraft, HelicopterAircraft, VtolAircraft},
+    config::{FixedWingAircraft, HelicopterAircraft, SpacecraftConfig, VtolAircraft},
     math::{move_towards, shape_axis},
 };
 use bevy::prelude::*;
@@ -56,6 +56,7 @@ pub(crate) fn resolve_controls(
         Option<&FixedWingAircraft>,
         Option<&HelicopterAircraft>,
         Option<&VtolAircraft>,
+        Option<&SpacecraftConfig>,
     )>,
 ) {
     let dt = time.delta_secs();
@@ -63,7 +64,7 @@ pub(crate) fn resolve_controls(
         return;
     }
 
-    for (input, mut resolved, mut gear, fixed_wing, helicopter, vtol) in &mut query {
+    for (input, mut resolved, mut gear, fixed_wing, helicopter, vtol, spacecraft) in &mut query {
         let (response, power, contact, target_transition, transition_rate_per_second) =
             if let Some(aircraft) = fixed_wing {
                 (
@@ -97,6 +98,14 @@ pub(crate) fn resolve_controls(
                     aircraft.contact_geometry,
                     input.vtol_transition.clamp(0.0, 1.0),
                     aircraft.transition_rate_per_second,
+                )
+            } else if let Some(craft) = spacecraft {
+                (
+                    craft.control_response,
+                    craft.power_response,
+                    crate::config::ContactGeometry::default(),
+                    0.0,
+                    0.0,
                 )
             } else {
                 continue;

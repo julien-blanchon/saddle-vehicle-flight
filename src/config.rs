@@ -195,6 +195,65 @@ impl FixedWingAircraft {
     pub fn arcade_racer_body() -> FlightBody {
         FlightBody::new(650.0, Vec3::new(620.0, 820.0, 940.0))
     }
+
+    /// Arcade fighter preset — no stall, high control authority, forgiving physics.
+    /// Inspired by Star Fox / Ace Combat-style gameplay: fast, responsive, fun.
+    pub fn arcade_fighter() -> Self {
+        Self {
+            wing_area_m2: 18.0,
+            wingspan_m: 12.0,
+            mean_chord_m: 1.6,
+            max_thrust_newtons: 14_000.0,
+            cl0: 0.30,
+            lift_curve_slope_per_rad: 7.0,
+            max_lift_coefficient: 3.0,
+            post_stall_lift_coefficient: 2.4,
+            zero_lift_drag_coefficient: 0.018,
+            induced_drag_factor: 0.035,
+            stall_drag_coefficient: 0.0,
+            side_force_slope_per_rad: 0.8,
+            aileron_authority: 0.80,
+            elevator_authority: 0.90,
+            rudder_authority: 0.60,
+            roll_rate_damping: 0.50,
+            pitch_rate_damping: 0.70,
+            yaw_rate_damping: 0.40,
+            roll_stability: 0.08,
+            pitch_stability: 0.45,
+            yaw_stability: 0.30,
+            gear_drag_coefficient: 0.0,
+            trim_authority: Vec3::new(0.05, 0.08, 0.06),
+            // Very high stall angle means stall essentially never triggers
+            stall_alpha_rad: 85.0_f32.to_radians(),
+            recovery_alpha_rad: 80.0_f32.to_radians(),
+            stall_response_per_second: 0.5,
+            control_response: FlightControlResponse {
+                pitch_rate_per_second: 14.0,
+                roll_rate_per_second: 16.0,
+                yaw_rate_per_second: 10.0,
+                pitch_exponent: 1.0,
+                roll_exponent: 1.0,
+                yaw_exponent: 1.0,
+            },
+            power_response: PowerResponse {
+                throttle_rise_per_second: 1.8,
+                throttle_fall_per_second: 2.2,
+                ..default()
+            },
+            landing_contact: ContactGeometry {
+                contact_offset_below_origin_m: 1.0,
+                retractable: false,
+                extension_rate_per_second: 1.0,
+                surface_damping_per_second: 1.6,
+                ground_effect_height_m: 4.0,
+                ground_effect_boost: 0.20,
+            },
+        }
+    }
+
+    pub fn arcade_fighter_body() -> FlightBody {
+        FlightBody::new(550.0, Vec3::new(500.0, 700.0, 800.0))
+    }
 }
 
 impl Default for FixedWingAircraft {
@@ -288,6 +347,10 @@ impl HelicopterAircraft {
 
     pub fn utility_body() -> FlightBody {
         FlightBody::new(1_150.0, Vec3::new(1_800.0, 1_600.0, 2_100.0))
+    }
+
+    pub fn arcade_body() -> FlightBody {
+        FlightBody::new(900.0, Vec3::new(1_350.0, 1_250.0, 1_650.0))
     }
 }
 
@@ -401,5 +464,126 @@ impl VtolAircraft {
 impl Default for VtolAircraft {
     fn default() -> Self {
         Self::tiltrotor_transport()
+    }
+}
+
+#[derive(Component, Reflect, Debug, Clone, Copy)]
+#[reflect(Component, Debug)]
+#[require(
+    Transform,
+    GlobalTransform,
+    FlightBody,
+    FlightAssist,
+    FlightAeroState,
+    FlightControlInput,
+    FlightEnvironment,
+    FlightForces,
+    FlightKinematics,
+    FlightMessageState,
+    LandingGearState,
+    ResolvedFlightControls,
+    FlightTelemetry,
+    StallState
+)]
+pub struct SpacecraftConfig {
+    pub max_thrust_newtons: f32,
+    pub rcs_thrust_newtons: f32,
+    pub pitch_torque_authority: f32,
+    pub roll_torque_authority: f32,
+    pub yaw_torque_authority: f32,
+    pub angular_damping: Vec3,
+    pub linear_drag_coefficient: f32,
+    pub control_response: FlightControlResponse,
+    pub power_response: PowerResponse,
+}
+
+impl SpacecraftConfig {
+    /// Generic space fighter preset — responsive controls, zero drag.
+    pub fn fighter() -> Self {
+        Self {
+            max_thrust_newtons: 12_000.0,
+            rcs_thrust_newtons: 3_000.0,
+            pitch_torque_authority: 6_000.0,
+            roll_torque_authority: 5_500.0,
+            yaw_torque_authority: 4_000.0,
+            angular_damping: Vec3::new(0.55, 0.55, 0.55),
+            linear_drag_coefficient: 0.0,
+            control_response: FlightControlResponse {
+                pitch_rate_per_second: 12.0,
+                roll_rate_per_second: 14.0,
+                yaw_rate_per_second: 10.0,
+                pitch_exponent: 1.0,
+                roll_exponent: 1.0,
+                yaw_exponent: 1.0,
+            },
+            power_response: PowerResponse {
+                throttle_rise_per_second: 2.0,
+                throttle_fall_per_second: 2.5,
+                ..default()
+            },
+        }
+    }
+
+    /// Slow cargo vessel preset — sluggish but stable.
+    pub fn cargo() -> Self {
+        Self {
+            max_thrust_newtons: 18_000.0,
+            rcs_thrust_newtons: 2_000.0,
+            pitch_torque_authority: 3_500.0,
+            roll_torque_authority: 3_000.0,
+            yaw_torque_authority: 2_800.0,
+            angular_damping: Vec3::new(0.72, 0.72, 0.72),
+            linear_drag_coefficient: 0.0,
+            control_response: FlightControlResponse {
+                pitch_rate_per_second: 5.0,
+                roll_rate_per_second: 4.0,
+                yaw_rate_per_second: 3.5,
+                pitch_exponent: 1.2,
+                roll_exponent: 1.2,
+                yaw_exponent: 1.1,
+            },
+            power_response: PowerResponse {
+                throttle_rise_per_second: 0.45,
+                throttle_fall_per_second: 0.6,
+                ..default()
+            },
+        }
+    }
+
+    /// Arcade space fighter — game-feel drag keeps speed manageable.
+    pub fn arcade_fighter() -> Self {
+        let mut model = Self::fighter();
+        model.linear_drag_coefficient = 0.35;
+        model.pitch_torque_authority = 8_000.0;
+        model.roll_torque_authority = 7_500.0;
+        model.yaw_torque_authority = 6_000.0;
+        model.control_response.pitch_rate_per_second = 16.0;
+        model.control_response.roll_rate_per_second = 18.0;
+        model.control_response.yaw_rate_per_second = 14.0;
+        model
+    }
+
+    pub fn fighter_body() -> FlightBody {
+        FlightBody {
+            mass_kg: 800.0,
+            inertia_kgm2: Vec3::new(700.0, 900.0, 1_000.0),
+            gravity_acceleration_mps2: 0.0,
+            use_internal_integration: true,
+        }
+    }
+
+    pub fn cargo_body() -> FlightBody {
+        FlightBody {
+            mass_kg: 4_500.0,
+            inertia_kgm2: Vec3::new(8_000.0, 10_000.0, 12_000.0),
+            gravity_acceleration_mps2: 0.0,
+            use_internal_integration: true,
+        }
+    }
+}
+
+impl Default for SpacecraftConfig {
+    fn default() -> Self {
+        Self::fighter()
     }
 }

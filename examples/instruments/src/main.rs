@@ -1,19 +1,23 @@
 use saddle_vehicle_flight_example_support as support;
 
 use bevy::prelude::*;
+use saddle_camera_third_person_camera::{
+    AutoRecenterSettings, CollisionSettings, FollowAlignment, OrbitSettings, SmoothingSettings,
+    ThirdPersonCamera, ThirdPersonCameraSettings, ThirdPersonCameraTarget, ZoomSettings,
+};
 use saddle_vehicle_flight::{
     FixedWingAircraft, FlightAeroState, FlightControlInput, FlightTelemetry,
 };
 use support::{
-    configure_example_app_with_follow_camera, spawn_fixed_wing_demo,
-    spawn_lights_ground_and_camera, spawn_overlay,
+    configure_example_app_with_follow_camera, spawn_fixed_wing_demo, spawn_lights_and_ground,
+    spawn_overlay,
 };
 
 fn main() {
     let mut app = App::new();
     configure_example_app_with_follow_camera(&mut app, false);
     app.add_systems(Startup, setup);
-    app.add_systems(Update, (fly_demo, follow_camera, update_overlay));
+    app.add_systems(Update, (fly_demo, update_overlay));
     app.run();
 }
 
@@ -22,8 +26,8 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    spawn_lights_ground_and_camera(&mut commands, &mut meshes, &mut materials);
-    spawn_fixed_wing_demo(
+    spawn_lights_and_ground(&mut commands, &mut meshes, &mut materials);
+    let aircraft = spawn_fixed_wing_demo(
         &mut commands,
         &mut meshes,
         &mut materials,
@@ -33,6 +37,44 @@ fn setup(
         0.70,
         false,
     );
+
+    commands.spawn((
+        Name::new("Instruments Camera"),
+        ThirdPersonCamera::new(20.0, 0.4, -0.36),
+        ThirdPersonCameraTarget::new(aircraft),
+        ThirdPersonCameraSettings {
+            orbit: OrbitSettings {
+                yaw_speed: 1.2,
+                pitch_speed: 1.1,
+                min_pitch: -1.45,
+                max_pitch: 0.10,
+                ..default()
+            },
+            smoothing: SmoothingSettings {
+                orientation_smoothing: 6.0,
+                target_follow_smoothing: 4.0,
+                zoom_smoothing: 12.0,
+                ..default()
+            },
+            zoom: ZoomSettings {
+                min_distance: 6.0,
+                max_distance: 50.0,
+                default_distance: 20.0,
+                step: 2.0,
+            },
+            collision: CollisionSettings {
+                enabled: false,
+                ..default()
+            },
+            auto_recenter: AutoRecenterSettings {
+                enabled: true,
+                inactivity_seconds: 1.5,
+                follow_alignment: FollowAlignment::TargetForward,
+            },
+            ..default()
+        },
+    ));
+
     spawn_overlay(&mut commands, "Instrument Overlay Example");
 }
 
@@ -47,24 +89,6 @@ fn fly_demo(time: Res<Time>, mut query: Query<&mut FlightControlInput, With<Fixe
     input.throttle = 0.72;
 }
 
-fn follow_camera(
-    time: Res<Time>,
-    aircraft: Query<&Transform, With<FixedWingAircraft>>,
-    mut camera: Query<(&mut Transform, &Camera), (With<Camera3d>, Without<FixedWingAircraft>)>,
-) {
-    let Ok(target) = aircraft.single() else {
-        return;
-    };
-    let Ok((mut camera, _)) = camera.single_mut() else {
-        return;
-    };
-    let desired =
-        target.translation - target.forward() * 20.0 + Vec3::Y * 8.0 + target.right() * 4.0;
-    let alpha = 1.0 - (-3.0 * time.delta_secs()).exp();
-    camera.translation = camera.translation.lerp(desired, alpha);
-    camera.look_at(target.translation + target.forward() * 12.0, Vec3::Y);
-}
-
 fn update_overlay(
     aircraft: Query<(&FlightTelemetry, &FlightAeroState), With<FixedWingAircraft>>,
     mut overlay: Query<&mut Text, (With<Node>, Without<FixedWingAircraft>)>,
@@ -77,7 +101,7 @@ fn update_overlay(
     };
 
     text.0 = format!(
-        "Instrument Overlay Example\nTrue airspeed {:>6.1} m/s\nIndicated airspeed {:>6.1} m/s\nAltitude MSL {:>6.1} m\nVertical speed {:>6.1} m/s\nAngle of attack {:>6.1} deg\nSideslip {:>6.1} deg\nDynamic pressure {:>7.1} Pa\nThrottle {:>4.2}  Gear {:>4.2}",
+        "Instrument Overlay Example\n\nTrue airspeed {:>6.1} m/s\nIndicated airspeed {:>6.1} m/s\nAltitude MSL {:>6.1} m\nVertical speed {:>6.1} m/s\nAngle of attack {:>6.1} deg\nSideslip {:>6.1} deg\nDynamic pressure {:>7.1} Pa\nThrottle {:>4.2}  Gear {:>4.2}\n\nMouse: orbit camera  Scroll: zoom",
         telemetry.true_airspeed_mps,
         telemetry.indicated_airspeed_mps,
         telemetry.altitude_msl_m,

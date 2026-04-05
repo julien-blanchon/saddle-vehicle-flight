@@ -1,6 +1,6 @@
 use crate::{
     components::{FlightBody, FlightKinematics, LandingGearState},
-    config::{FixedWingAircraft, HelicopterAircraft, VtolAircraft},
+    config::{FixedWingAircraft, HelicopterAircraft, SpacecraftConfig, VtolAircraft},
     math::sanitize_vec3,
     telemetry::FlightForces,
 };
@@ -57,12 +57,21 @@ pub(crate) fn resolve_ground_contact(
         Option<&FixedWingAircraft>,
         Option<&HelicopterAircraft>,
         Option<&VtolAircraft>,
+        Option<&SpacecraftConfig>,
         &crate::components::FlightEnvironment,
     )>,
 ) {
     let dt = time.delta_secs();
-    for (mut transform, mut kinematics, mut gear, fixed_wing, helicopter, vtol, environment) in
-        &mut query
+    for (
+        mut transform,
+        mut kinematics,
+        mut gear,
+        fixed_wing,
+        helicopter,
+        vtol,
+        _spacecraft,
+        environment,
+    ) in &mut query
     {
         let Some(surface_altitude) = environment.surface_altitude_msl_m else {
             gear.contact = false;
