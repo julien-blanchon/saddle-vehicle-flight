@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			(() => {
+				document.documentElement.classList.add('js');
+				const storageKey = 'docs-theme';
+				const storedTheme = localStorage.getItem(storageKey);
+				const isDark =
+					storedTheme === 'dark' ||
+					(storedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+				document.documentElement.classList.toggle('dark', isDark);
+				document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+			})();
+		</script>
+		<link href="../../_app/immutable/entry/start.CdM3lXUi.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/Denhgiyz.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/D6rU7RKI.js" rel="modulepreload">
+		<link href="../../_app/immutable/entry/app.BCl6wjeJ.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/D2PL5qU_.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/DsnmJJEf.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/CGbRUU1n.js" rel="modulepreload">
+		<link href="../../_app/immutable/nodes/0.CWnnh-w2.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/hArMfLgb.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/BYZRGk7E.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/D3udy8KQ.js" rel="modulepreload">
+		<link href="../../_app/immutable/nodes/2.CcqNZy0z.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/BV3Gg4Tz.js" rel="modulepreload">
+		<link href="../../_app/immutable/nodes/5.BOp3_yHr.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/O7QY0ZL7.js" rel="modulepreload">
+		<!--12qhfyh--><meta name="theme-color" content="#ffffff"/> <link rel="icon" type="image/svg+xml" href="../../favicon.svg"/> <meta name="description" content="Reusable aircraft flight toolkit for Bevy covering fixed-wing and helicopter flight"/><!----><!--1bpnej--><!--[0--><meta name="description" content="Architecture documentation"/><!--]--><!----><title>Architecture - saddle-vehicle-flight</title>
+		<link href="../../_app/immutable/assets/manifest.DAGDUwuc.css" rel="stylesheet">
+		<link href="../../_app/immutable/assets/0.Cu___w4E.css" rel="stylesheet">
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents"><!--[--><!--[0--><!--[--><!--[0--><!--[--><main class="relative h-dvh bg-background text-foreground"><div class="fixed inset-x-0 top-0 z-50 flex items-center justify-between border-b border-border bg-background px-4 py-1.5 lg:hidden"><a href="../../" class="inline-flex items-center gap-1 px-2 py-2 text-sm tracking-tight text-foreground"><span class="font-medium tracking-tight text-foreground">saddle-vehicle-flight</span></a> <button class="-mr-2 inline-flex size-10 items-center justify-center gap-2 rounded-sm text-sm whitespace-nowrap text-foreground transition-colors duration-150 ease-out hover:bg-background-muted lg:hidden" aria-label="Toggle menu"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" preserveAspectRatio="xMidYMid meet" width="20" height="20" aria-hidden="true"><!--[-1--><!--]--><path d="M4 6H28V8H4z"></path><path d="M4 24H28V26H4z"></path><path d="M4 12H28V14H4z"></path><path d="M4 18H28V20H4z"></path></svg><!----></button></div> <!--[-1--><!--]--><!----> <div class="flex h-full w-full min-w-0 lg:grid lg:grid-cols-[22rem_minmax(0,1fr)] lg:pr-4 xl:grid-cols-[22rem_minmax(0,56rem)_18rem] xl:justify-center"><div class="hidden lg:block"><aside class="flex h-dvh flex-col bg-background" aria-label="Documentation sidebar"><div class="flex flex-col gap-4 p-4"><a href="../../" class="flex items-center gap-2"><span class="text-xl font-medium tracking-tight text-foreground">saddle-vehicle-flight</span></a> <!--[0--><button type="button" class="group inset-shadow relative flex h-9 w-full items-center gap-2 rounded-sm bg-background-inset px-3 py-1.5 text-sm font-medium text-foreground-muted/70 transition-[color] duration-150 ease-out hover:text-foreground-muted"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" preserveAspectRatio="xMidYMid meet" width="16" height="16" aria-hidden="true" class="text-foreground-muted/70"><!--[-1--><!--]--><path d="M29,27.5859l-7.5521-7.5521a11.0177,11.0177,0,1,0-1.4141,1.4141L27.5859,29ZM4,13a9,9,0,1,1,9,9A9.01,9.01,0,0,1,4,13Z"></path></svg><!----> <span class="flex-1 text-left">Search...</span> <!--[0--><kbd class="card pointer-events-none relative hidden h-5 items-center gap-1 rounded-xs bg-background px-1.5 font-mono text-[10px] font-medium text-foreground-muted/70 select-none sm:flex">⌘ K</kbd><!--]--></button><!--]--><!----></div> <div class="relative flex flex-col overflow-hidden flex-1 svelte-1lcbi17"><div class="scrollbar-hide min-h-0 w-full flex-1 overflow-x-hidden overflow-y-auto p-4 svelte-1lcbi17" style="mask-image: linear-gradient(to bottom, transparent, black 16px, black calc(100% - 16px), transparent); -webkit-mask-image: linear-gradient(to bottom, transparent, black 16px, black calc(100% - 16px), transparent);"><nav class="flex flex-col space-y-1" aria-label="Documentation pages"><h4 class="mb-2 ml-2 text-xs font-medium tracking-wide text-foreground-muted/70 uppercase">Docs</h4> <!--[--><!--[-1--><a href="../../" class="block rounded-sm px-3 py-1.5 text-sm tracking-normal transition-all duration-150 ease-out text-foreground-muted hover:bg-background-muted hover:text-foreground">Overview</a><!--]--><!--[0--><button class="flex w-full items-center justify-between rounded-sm px-3 py-1.5 text-sm font-medium tracking-normal transition-all duration-150 ease-out hover:bg-background-muted hover:text-foreground text-foreground-muted"><span>Documentation</span> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" preserveAspectRatio="xMidYMid meet" width="16" height="16" aria-hidden="true" class="size-4 transition-transform duration-150"><!--[-1--><!--]--><path d="M22 16 12 26 10.6 24.6 19.2 16 10.6 7.4 12 6z"></path></svg><!----></button> <!--[-1--><!--]--><!--]--><!--[0--><button class="flex w-full items-center justify-between rounded-sm px-3 py-1.5 text-sm font-medium tracking-normal transition-all duration-150 ease-out hover:bg-background-muted hover:text-foreground text-foreground-muted"><span>Demos</span> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" preserveAspectRatio="xMidYMid meet" width="16" height="16" aria-hidden="true" class="size-4 transition-transform duration-150"><!--[-1--><!--]--><path d="M22 16 12 26 10.6 24.6 19.2 16 10.6 7.4 12 6z"></path></svg><!----></button> <!--[-1--><!--]--><!--]--><!--]--></nav><!----></div></div><!----> <div class="flex items-center gap-1 p-4"><!--[0--><button type="button" class="group transition-scale inset-shadow relative inline-flex size-7 items-center justify-center rounded-sm bg-background-inset text-foreground duration-150 ease-out active:scale-[0.95]" aria-label="Switch to dark mode"><span class="sr-only">Switch to dark mode</span> <span class="transition-transform duration-150 ease-out"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" preserveAspectRatio="xMidYMid meet" width="16" height="16" aria-hidden="true"><!--[-1--><!--]--><path d="M16,12a4,4,0,1,1-4,4,4.0045,4.0045,0,0,1,4-4m0-2a6,6,0,1,0,6,6,6,6,0,0,0-6-6Z" transform="translate(0 .005)"></path><path d="M6.854 5.375H8.854V10.333H6.854z" transform="rotate(-45 7.86 7.856)"></path><path d="M2 15.005H7V17.005000000000003H2z"></path><path d="M5.375 23.147H10.333V25.147H5.375z" transform="rotate(-45 7.86 24.149)"></path><path d="M15 25.005H17V30.005H15z"></path><path d="M23.147 21.668H25.147V26.625999999999998H23.147z" transform="rotate(-45 24.152 24.149)"></path><path d="M25 15.005H30V17.005000000000003H25z"></path><path d="M21.668 6.854H26.625999999999998V8.854H21.668z" transform="rotate(-45 24.152 7.856)"></path><path d="M15 2.005H17V7.005H15z"></path></svg><!----></span> <span class="absolute transition-transform duration-150 ease-out scale-0 blur-[2px]"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" preserveAspectRatio="xMidYMid meet" width="16" height="16" aria-hidden="true"><!--[-1--><!--]--><path d="M13.5025,5.4136A15.0755,15.0755,0,0,0,25.096,23.6082a11.1134,11.1134,0,0,1-7.9749,3.3893c-.1385,0-.2782.0051-.4178,0A11.0944,11.0944,0,0,1,13.5025,5.4136M14.98,3a1.0024,1.0024,0,0,0-.1746.0156A13.0959,13.0959,0,0,0,16.63,28.9973c.1641.006.3282,0,.4909,0a13.0724,13.0724,0,0,0,10.702-5.5556,1.0094,1.0094,0,0,0-.7833-1.5644A13.08,13.08,0,0,1,15.8892,4.38,1.0149,1.0149,0,0,0,14.98,3Z"></path></svg><!----></span></button><!--]--> <!--[0--><a class="group transition-scale inset-shadow relative inline-flex size-7 cursor-pointer items-center justify-center rounded-sm bg-background-inset text-foreground duration-150 ease-out active:scale-[0.95]" href="https://github.com/julien-blanchon/saddle-vehicle-flight" target="_blank" rel="noreferrer" aria-label="Open project repository (opens in a new tab)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" preserveAspectRatio="xMidYMid meet" width="16" height="16" aria-hidden="true" class="size-4 flex-none"><!--[-1--><!--]--><path fill-rule="evenodd" d="M16,2a14,14,0,0,0-4.43,27.28c.7.13,1-.3,1-.67s0-1.21,0-2.38c-3.89.84-4.71-1.88-4.71-1.88A3.71,3.71,0,0,0,6.24,22.3c-1.27-.86.1-.85.1-.85A2.94,2.94,0,0,1,8.48,22.9a3,3,0,0,0,4.08,1.16,2.93,2.93,0,0,1,.88-1.87c-3.1-.36-6.37-1.56-6.37-6.92a5.4,5.4,0,0,1,1.44-3.76,5,5,0,0,1,.14-3.7s1.17-.38,3.85,1.43a13.3,13.3,0,0,1,7,0c2.67-1.81,3.84-1.43,3.84-1.43a5,5,0,0,1,.14,3.7,5.4,5.4,0,0,1,1.44,3.76c0,5.38-3.27,6.56-6.39,6.91a3.33,3.33,0,0,1,.95,2.59c0,1.87,0,3.38,0,3.84s.25.81,1,.67A14,14,0,0,0,16,2Z"></path></svg><!----></a><!--]--></div></aside><!----></div> <div class="inset-shadow relative mx-auto h-full w-full max-w-4xl min-w-0 overflow-hidden border border-border bg-background-inset pt-12 lg:my-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-visible lg:rounded-xl lg:pt-0"><div class="relative flex flex-col overflow-hidden mx-auto h-full w-full lg:max-h-[calc(100dvh-2rem)] svelte-1lcbi17"><div id="docs-content-container" class="scrollbar-hide min-h-0 w-full flex-1 overflow-x-hidden overflow-y-auto rounded-lg overscroll-none flex flex-col gap-8 px-4 py-8 lg:px-8 svelte-1lcbi17" style="mask-image: linear-gradient(to bottom, transparent, black 16px, black calc(100% - 16px), transparent); -webkit-mask-image: linear-gradient(to bottom, transparent, black 16px, black calc(100% - 16px), transparent);"><section class="min-w-0 flex-1 space-y-8"><div class="space-y-4"><!--[-1--><!--]--> <h1 class="scroll-m-20 text-3xl font-medium tracking-tight text-foreground">Architecture</h1> <!--[0--><p class="max-w-4xl text-base font-normal tracking-normal text-foreground-muted">Architecture documentation</p><!--]--> <!--[0--><!--[0--><div class="relative z-20 mt-8 flex w-full gap-2 lg:hidden"><!--[0--><div class="inset-shadow w-full rounded-md bg-background-inset p-1.5"><button type="button" aria-live="polite" aria-disabled="false" class="card relative inline-flex h-9 w-full font-medium shrink-0 overflow-hidden items-center justify-center gap-2 rounded-sm bg-background px-4 py-2 text-sm whitespace-nowrap text-foreground transition-[background-color] duration-150 ease-out hover:bg-background-muted disabled:pointer-events-none disabled:opacity-50 has-[>svg]:px-3 [&amp;_svg]:pointer-events-none [&amp;_svg]:shrink-0 [&amp;_svg:not([class*=size-])]:size-4 flex-1"><span class="grid place-items-center" style="grid-template-areas: 'content';"><!----><span class="flex items-center gap-2 font-medium tracking-normal text-foreground will-change-transform" style="grid-area: content;"><!--[-1--><svg role="img" viewBox="0 0 24 24" fill="none" aria-hidden="true" class="size-4 flex-none"><title>Markdown</title><path class="stroke-current" d="M1.212 5.5h21.576c.407 0 .712.317.712.679v11.549a.695.695 0 0 1-.712.677H1.212a.695.695 0 0 1-.712-.678V6.18c0-.362.305-.679.712-.679Z"></path><path class="fill-current" d="M3.03 15.96V7.946h2.425l2.424 2.946 2.424-2.946h2.424v8.014h-2.424v-4.596L7.88 14.31l-2.424-2.946v4.596H3.03Zm15.152 0-3.636-3.89h2.424V7.947h2.424v4.125h2.424l-3.636 3.889Z"></path></svg><!--]--> <span>Copy Markdown</span></span><!----></span></button></div><!--]--> <!--[0--><div class="inset-shadow relative rounded-md bg-background-inset p-1.5"><button id="mobile-doc-actions-menu-trigger" type="button" class="card relative inline-flex h-9 w-full font-medium shrink-0 overflow-hidden items-center justify-center gap-2 rounded-sm bg-background px-4 py-2 text-sm whitespace-nowrap text-foreground transition-[background-color] duration-150 ease-out hover:bg-background-muted disabled:pointer-events-none disabled:opacity-50 has-[>svg]:px-3 [&amp;_svg]:pointer-events-none [&amp;_svg]:shrink-0 [&amp;_svg:not([class*=size-])]:size-4 flex-1 w-auto! px-2.5!" aria-label="More actions" aria-haspopup="menu" aria-controls="mobile-doc-actions-menu" aria-expanded="false"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" preserveAspectRatio="xMidYMid meet" width="16" height="16" aria-hidden="true" class="size-4"><!--[-1--><!--]--><circle cx="8" cy="16" r="2"></circle><circle cx="16" cy="16" r="2"></circle><circle cx="24" cy="16" r="2"></circle></svg><!----></button> <!--[-1--><!--]--></div><!--]--></div><!--]--><!--]--></div> <hr class="text-border"/> <div><!--[--><article data-doc-content="" class="w-full max-w-4xl"><!----><h2>Layering</h2>
+<p><code>saddle-vehicle-flight</code> keeps reusable flight math separate from Bevy orchestration.</p>
+<p>Pure or mostly pure logic:</p>
+<ol>
+<li><code>atmosphere.rs</code></li>
+<li><code>math.rs</code></li>
+<li><code>model/common.rs</code></li>
+<li><code>model/fixed_wing.rs</code></li>
+<li><code>model/helicopter.rs</code></li>
+<li><code>model/vtol.rs</code></li>
+<li><code>model/spacecraft.rs</code></li>
+</ol>
+<p>Bevy-facing orchestration:</p>
+<ol>
+<li><code>components.rs</code></li>
+<li><code>config.rs</code></li>
+<li><code>messages.rs</code></li>
+<li><code>telemetry.rs</code></li>
+<li><code>systems/*</code></li>
+<li><code>lib.rs</code></li>
+</ol>
+<p>The main architectural shift is that the runtime no longer branches directly on four independent public config components. Instead, the public surface is split into four orthogonal pieces:</p>
+<ol>
+<li><code>VehicleModel</code>: the model family and its aerodynamic or inertial data</li>
+<li><code>VehicleActuators</code>: thrust axes, surface authority, torque authority, and hybrid thrust routing</li>
+<li><code>VehicleControlMap</code>: how <code>FlightControlInput</code> turns into resolved channels</li>
+<li><code>GroundHandling</code>: per-vehicle contact and damping behavior</li>
+</ol>
+<p>That means input semantics, thrust routing, and contact behavior are now configurable without rewriting the core systems.</p>
+<h2>Runtime Flow</h2>
+<div class="code-block" data-code="FlightControlInput
+  -> VehicleControlMap
+  -> FlightControlChannels
+  -> FlightEnvironment / atmosphere sample
+  -> motion sample in body space
+  -> VehicleModel + VehicleActuators evaluation
+  -> FlightAeroState + FlightForces
+  -> integrate or hand off to external physics
+  -> FlightTelemetry
+  -> StallEntered / StallRecovered / GearStateChanged" data-language="text">
+					<div class="shiki-theme-light"><pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span>FlightControlInput</span></span>
+<span class="line"><span>  -> VehicleControlMap</span></span>
+<span class="line"><span>  -> FlightControlChannels</span></span>
+<span class="line"><span>  -> FlightEnvironment / atmosphere sample</span></span>
+<span class="line"><span>  -> motion sample in body space</span></span>
+<span class="line"><span>  -> VehicleModel + VehicleActuators evaluation</span></span>
+<span class="line"><span>  -> FlightAeroState + FlightForces</span></span>
+<span class="line"><span>  -> integrate or hand off to external physics</span></span>
+<span class="line"><span>  -> FlightTelemetry</span></span>
+<span class="line"><span>  -> StallEntered / StallRecovered / GearStateChanged</span></span></code></pre></div>
+					<div class="shiki-theme-dark"><pre class="shiki github-dark" style="background-color:#24292e;color:#e1e4e8" tabindex="0"><code><span class="line"><span>FlightControlInput</span></span>
+<span class="line"><span>  -> VehicleControlMap</span></span>
+<span class="line"><span>  -> FlightControlChannels</span></span>
+<span class="line"><span>  -> FlightEnvironment / atmosphere sample</span></span>
+<span class="line"><span>  -> motion sample in body space</span></span>
+<span class="line"><span>  -> VehicleModel + VehicleActuators evaluation</span></span>
+<span class="line"><span>  -> FlightAeroState + FlightForces</span></span>
+<span class="line"><span>  -> integrate or hand off to external physics</span></span>
+<span class="line"><span>  -> FlightTelemetry</span></span>
+<span class="line"><span>  -> StallEntered / StallRecovered / GearStateChanged</span></span></code></pre></div>
+				</div><h2>Schedule Ordering</h2>
+<p><code>FlightSystems</code> is public and chained in this order:</p>
+<ol>
+<li><code>ResolveControls</code></li>
+<li><code>SampleEnvironment</code></li>
+<li><code>ComputeDynamics</code></li>
+<li><code>IntegrateMotion</code></li>
+<li><code>UpdateTelemetry</code></li>
+<li><code>EmitMessages</code></li>
+</ol>
+<p>This keeps downstream reads stable inside one frame:</p>
+<ul>
+<li>control shaping and gear targets settle before any dynamics math runs</li>
+<li>atmosphere density and AGL are current before force evaluation</li>
+<li>telemetry always reflects the same frame&#39;s resolved channels and force state</li>
+<li>messages are emitted from final runtime state, not speculative inputs</li>
+</ul>
+<p>The plugin accepts injectable activate, deactivate, and update schedules so games can map the runtime into their own state machine or feature pipeline.</p>
+<h2>Coordinate Frames</h2>
+<h3>World frame</h3>
+<ul>
+<li>right-handed Bevy 3D world</li>
+<li><code>Vec3::Y</code> is up</li>
+<li><code>Transform::translation.y</code> is mean-sea-level altitude input for atmosphere sampling</li>
+</ul>
+<h3>Body frame</h3>
+<ul>
+<li>body right = <code>transform.right()</code> = local <code>+X</code></li>
+<li>body up = <code>transform.up()</code> = local <code>+Y</code></li>
+<li>body forward = <code>transform.forward()</code> = local <code>-Z</code></li>
+</ul>
+<p>This means aircraft meshes should be authored so the nose points along Bevy forward.</p>
+<h3>Air-relative quantities</h3>
+<p>The runtime computes air-relative motion from:</p>
+<div class="code-block" data-code="air velocity = linear velocity - (wind + gust)" data-language="text">
+					<div class="shiki-theme-light"><pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span>air velocity = linear velocity - (wind + gust)</span></span></code></pre></div>
+					<div class="shiki-theme-dark"><pre class="shiki github-dark" style="background-color:#24292e;color:#e1e4e8" tabindex="0"><code><span class="line"><span>air velocity = linear velocity - (wind + gust)</span></span></code></pre></div>
+				</div><p>From that it derives:</p>
+<ul>
+<li>true airspeed magnitude</li>
+<li>body-forward speed</li>
+<li>body-right speed</li>
+<li>body-up speed</li>
+<li>angle of attack</li>
+<li>sideslip</li>
+<li>dynamic pressure</li>
+</ul>
+<p><code>FlightKinematics::angular_velocity_body_rps</code> is an axis-aligned body rotation vector:</p>
+<ul>
+<li><code>x</code>: rotation about body right</li>
+<li><code>y</code>: rotation about body up</li>
+<li><code>z</code>: rotation about body forward</li>
+</ul>
+<h2>Control Mapping Layer</h2>
+<p><code>VehicleControlMap</code> resolves the user-authored <code>FlightControlInput</code> surface into runtime <code>FlightControlChannels</code>.</p>
+<p>Each channel binding owns:</p>
+<ul>
+<li>an input source such as <code>Pitch</code>, <code>Throttle</code>, or <code>Transition</code></li>
+<li>optional trim coupling</li>
+<li>scalar gain and offset</li>
+<li>clamp range</li>
+<li>slew-up and slew-down rates</li>
+<li>axis shaping exponent</li>
+</ul>
+<p>This is the layer that makes the crate generic:</p>
+<ul>
+<li>spacecraft no longer hardcode yaw or collective for translation</li>
+<li>hybrid VTOL no longer hardcode a special power handoff in the control system</li>
+<li>alternate games can reuse one model with completely different control semantics</li>
+</ul>
+<h2>Model Evaluation Layer</h2>
+<p><code>compute_vehicle_dynamics</code> is now a single system that queries <code>VehicleModel</code>, <code>VehicleActuators</code>, and <code>GroundHandling</code>, then dispatches into the pure evaluators.</p>
+<h3>Fixed-wing path</h3>
+<p><code>evaluate_fixed_wing_with_motion</code> handles:</p>
+<ol>
+<li>AoA and sideslip extraction</li>
+<li>qbar evaluation</li>
+<li>lift, drag, side-force, and thrust evaluation</li>
+<li>stall hysteresis target generation</li>
+<li>control-surface, stability, damping, and assist torques</li>
+<li>gear drag and ground-effect scaling</li>
+</ol>
+<h3>Rotorcraft path</h3>
+<p><code>evaluate_rotorcraft</code> handles:</p>
+<ol>
+<li>lift-channel-driven rotor thrust</li>
+<li>translational lift gain</li>
+<li>parasite and side drag</li>
+<li>torque channels and anti-torque coupling</li>
+<li>hover assist torques</li>
+<li>ground-effect scaling</li>
+</ol>
+<h3>Hybrid path</h3>
+<p><code>evaluate_hybrid</code> combines the fixed-wing and rotorcraft sub-models, but the combination is now expressed by model and actuator config:</p>
+<ol>
+<li><code>HybridVehicleModel</code> owns the wingborne blend window</li>
+<li><code>HybridActuators</code> owns rotor thrust routing from hover axis to cruise axis</li>
+<li>control-channel mapping decides whether forward and vertical thrust stay coupled or separate</li>
+<li>the evaluator blends fixed-wing lift or torque with rotorcraft lift or torque using the resolved transition channel</li>
+</ol>
+<h3>Spacecraft path</h3>
+<p><code>evaluate_spacecraft</code> provides a pure 6-DOF thruster model with no atmosphere:</p>
+<ol>
+<li>forward, lateral, and vertical thrust channels</li>
+<li>configurable body-axis translation directions</li>
+<li>configurable angular torque authority</li>
+<li>configurable angular damping</li>
+<li>optional linear drag for arcade game-feel</li>
+<li>zero- or nonzero-gravity operation through <code>FlightBody</code></li>
+</ol>
+<h2>Ground Handling Layer</h2>
+<p><code>GroundHandling</code> replaces family-specific contact branching.</p>
+<p>It owns:</p>
+<ul>
+<li>whether contact is enabled at all</li>
+<li><code>ContactGeometry</code></li>
+<li>longitudinal damping</li>
+<li>lateral damping</li>
+<li>angular damping</li>
+</ul>
+<p>Every vehicle family uses the same contact resolver. Different rollout or skid behavior now comes from per-vehicle config, not from hardcoded <code>&quot;fixed-wing vs VTOL&quot;</code> rules inside the system.</p>
+<h2>Integration Boundary</h2>
+<p>By default <code>FlightBody::use_internal_integration = true</code>, so the crate updates:</p>
+<ul>
+<li><code>FlightKinematics</code></li>
+<li><code>Transform</code></li>
+</ul>
+<p>using the resolved total force and total torque.</p>
+<p>If a project wants an external physics backend, the intended boundary is:</p>
+<ul>
+<li>keep <code>ResolveControls</code>, <code>SampleEnvironment</code>, <code>ComputeDynamics</code>, <code>UpdateTelemetry</code>, and <code>EmitMessages</code></li>
+<li>disable internal motion integration on the entity</li>
+<li>read <code>FlightForces</code> and apply them through the external backend</li>
+<li>write the resulting <code>Transform</code> and <code>FlightKinematics</code> back into the shared runtime state</li>
+</ul>
+<p>That keeps the reusable atmosphere and flight-model code independent from Avian, Rapier, or project-specific gameplay crates.</p>
+<h2>Debug Surface</h2>
+<p>The crate publishes its debug and instrumentation surface through normal ECS state:</p>
+<ul>
+<li><code>FlightControlChannels</code> for resolved command inspection</li>
+<li><code>FlightAeroState</code> for atmosphere, qbar, AoA, sideslip, and air-relative velocity</li>
+<li><code>FlightForces</code> for lift, drag, thrust, gravity, and torque breakdown</li>
+<li><code>FlightTelemetry</code> for instrument-style UI consumption</li>
+<li><code>StallState</code> and <code>LandingGearState</code> for state transitions</li>
+<li>messages for stall and gear changes</li>
+</ul>
+<p>The examples and lab deliberately expose these values in overlays and gizmo arrows so BRP and E2E can inspect both behavior and visuals.</p>
+<h2>Testing Strategy</h2>
+<p>The crate verifies the pure and Bevy-facing layers separately:</p>
+<ul>
+<li>pure unit tests for atmosphere sampling and model math</li>
+<li>Bevy integration tests for plugin wiring, generic control resolution, state updates, and message emission</li>
+<li>example workspace presets that exercise the public generic surface</li>
+<li>a crate-local lab with E2E scenarios for fixed-wing climb, stall recovery, rotorcraft hover, and hybrid transition</li>
+</ul>
+<!----></article> <!----><!--]--><!----> <!--[-1--><!--]--><!----></div></section><!----></div></div><!----></div> <aside class="hidden xl:block xl:w-full xl:py-8 xl:pr-4 xl:pl-4" aria-label="Table of contents and document actions"><div class="sticky top-8 flex h-full max-h-[calc(100dvh-4rem)] min-h-0 flex-col"><!--[0--><div class="min-h-0 flex-1"><div class="contents"><!--[-1--><div class="hidden text-sm tracking-normal text-foreground-muted/70 lg:block">No headings</div><!--]--></div><!----></div><!--]--> <!--[0--><!--[0--><div class="mt-auto"><div class="flex flex-col gap-1 text-sm"><!--[0--><button type="button" aria-live="polite" aria-disabled="false" class="group/option flex items-center gap-2 overflow-hidden rounded-sm px-3 py-1.5 text-left font-medium tracking-normal text-foreground-muted transition-colors duration-150 ease-out hover:bg-background-muted hover:text-foreground"><span class="grid" style="grid-template-areas: 'content';"><!----><span class="flex items-center gap-2" style="grid-area: content;"><!--[-1--><svg role="img" viewBox="0 0 24 24" fill="none" aria-hidden="true" class="size-4 flex-none"><title>Markdown</title><path class="stroke-current" d="M1.212 5.5h21.576c.407 0 .712.317.712.679v11.549a.695.695 0 0 1-.712.677H1.212a.695.695 0 0 1-.712-.678V6.18c0-.362.305-.679.712-.679Z"></path><path class="fill-current" d="M3.03 15.96V7.946h2.425l2.424 2.946 2.424-2.946h2.424v8.014h-2.424v-4.596L7.88 14.31l-2.424-2.946v4.596H3.03Zm15.152 0-3.636-3.89h2.424V7.947h2.424v4.125h2.424l-3.636 3.889Z"></path></svg><!--]--> <span>Copy as Markdown</span></span><!----></span></button><!--]--> <!--[0--><a class="group/option flex items-center gap-2 rounded-sm px-3 py-1.5 text-left font-medium tracking-normal text-foreground-muted transition-colors duration-150 ease-out hover:bg-background-muted hover:text-foreground" href="https://github.com/julien-blanchon/saddle-vehicle-flight/blob/main/docs//saddle-vehicle-flight/docs/architecture.md" target="_blank" rel="noreferrer"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" preserveAspectRatio="xMidYMid meet" width="16" height="16" aria-hidden="true" class="size-4 flex-none"><!--[-1--><!--]--><path fill-rule="evenodd" d="M16,2a14,14,0,0,0-4.43,27.28c.7.13,1-.3,1-.67s0-1.21,0-2.38c-3.89.84-4.71-1.88-4.71-1.88A3.71,3.71,0,0,0,6.24,22.3c-1.27-.86.1-.85.1-.85A2.94,2.94,0,0,1,8.48,22.9a3,3,0,0,0,4.08,1.16,2.93,2.93,0,0,1,.88-1.87c-3.1-.36-6.37-1.56-6.37-6.92a5.4,5.4,0,0,1,1.44-3.76,5,5,0,0,1,.14-3.7s1.17-.38,3.85,1.43a13.3,13.3,0,0,1,7,0c2.67-1.81,3.84-1.43,3.84-1.43a5,5,0,0,1,.14,3.7,5.4,5.4,0,0,1,1.44,3.76c0,5.38-3.27,6.56-6.39,6.91a3.33,3.33,0,0,1,.95,2.59c0,1.87,0,3.38,0,3.84s.25.81,1,.67A14,14,0,0,0,16,2Z"></path></svg><!----> <span>Open in GitHub</span> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor" preserveAspectRatio="xMidYMid meet" width="16" height="16" aria-hidden="true" class="ml-auto size-4 flex-none"><!--[-1--><!--]--><path d="M26,28H6a2.0027,2.0027,0,0,1-2-2V6A2.0027,2.0027,0,0,1,6,4H16V6H6V26H26V16h2V26A2.0027,2.0027,0,0,1,26,28Z"></path><path d="M20 2 20 4 26.586 4 18 12.586 19.414 14 28 5.414 28 12 30 12 30 2 20 2z"></path></svg><!----> <span class="sr-only">(opens in a new tab)</span></a><!--]--> <!--[-1--><!--]--> <!--[-1--><!--]--></div></div><!--]--><!--]--></div></aside></div></main><!--]--><!--]--><!----> <!--[0--><!--[-1--><!--]--><!--]--><!--]--><!--]--> <!--[-1--><!--]--><!--]-->
+			
+			<script>
+				{
+					__sveltekit_k7z100 = {
+						base: new URL("../..", location).pathname.slice(0, -1),
+						assets: "/saddle-vehicle-flight"
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("../../_app/immutable/entry/start.CdM3lXUi.js"),
+						import("../../_app/immutable/entry/app.BCl6wjeJ.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element, {
+							node_ids: [0, 2, 5],
+							data: [null,null,{type:"data",data:{html:"\u003Ch2>Layering\u003C/h2>\n\u003Cp>\u003Ccode>saddle-vehicle-flight\u003C/code> keeps reusable flight math separate from Bevy orchestration.\u003C/p>\n\u003Cp>Pure or mostly pure logic:\u003C/p>\n\u003Col>\n\u003Cli>\u003Ccode>atmosphere.rs\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>math.rs\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>model/common.rs\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>model/fixed_wing.rs\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>model/helicopter.rs\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>model/vtol.rs\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>model/spacecraft.rs\u003C/code>\u003C/li>\n\u003C/ol>\n\u003Cp>Bevy-facing orchestration:\u003C/p>\n\u003Col>\n\u003Cli>\u003Ccode>components.rs\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>config.rs\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>messages.rs\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>telemetry.rs\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>systems/*\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>lib.rs\u003C/code>\u003C/li>\n\u003C/ol>\n\u003Cp>The main architectural shift is that the runtime no longer branches directly on four independent public config components. Instead, the public surface is split into four orthogonal pieces:\u003C/p>\n\u003Col>\n\u003Cli>\u003Ccode>VehicleModel\u003C/code>: the model family and its aerodynamic or inertial data\u003C/li>\n\u003Cli>\u003Ccode>VehicleActuators\u003C/code>: thrust axes, surface authority, torque authority, and hybrid thrust routing\u003C/li>\n\u003Cli>\u003Ccode>VehicleControlMap\u003C/code>: how \u003Ccode>FlightControlInput\u003C/code> turns into resolved channels\u003C/li>\n\u003Cli>\u003Ccode>GroundHandling\u003C/code>: per-vehicle contact and damping behavior\u003C/li>\n\u003C/ol>\n\u003Cp>That means input semantics, thrust routing, and contact behavior are now configurable without rewriting the core systems.\u003C/p>\n\u003Ch2>Runtime Flow\u003C/h2>\n\u003Cdiv class=\"code-block\" data-code=\"FlightControlInput\n  -> VehicleControlMap\n  -> FlightControlChannels\n  -> FlightEnvironment / atmosphere sample\n  -> motion sample in body space\n  -> VehicleModel + VehicleActuators evaluation\n  -> FlightAeroState + FlightForces\n  -> integrate or hand off to external physics\n  -> FlightTelemetry\n  -> StallEntered / StallRecovered / GearStateChanged\" data-language=\"text\">\n\t\t\t\t\t\u003Cdiv class=\"shiki-theme-light\">\u003Cpre class=\"shiki github-light\" style=\"background-color:#fff;color:#24292e\" tabindex=\"0\">\u003Ccode>\u003Cspan class=\"line\">\u003Cspan>FlightControlInput\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> VehicleControlMap\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> FlightControlChannels\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> FlightEnvironment / atmosphere sample\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> motion sample in body space\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> VehicleModel + VehicleActuators evaluation\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> FlightAeroState + FlightForces\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> integrate or hand off to external physics\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> FlightTelemetry\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> StallEntered / StallRecovered / GearStateChanged\u003C/span>\u003C/span>\u003C/code>\u003C/pre>\u003C/div>\n\t\t\t\t\t\u003Cdiv class=\"shiki-theme-dark\">\u003Cpre class=\"shiki github-dark\" style=\"background-color:#24292e;color:#e1e4e8\" tabindex=\"0\">\u003Ccode>\u003Cspan class=\"line\">\u003Cspan>FlightControlInput\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> VehicleControlMap\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> FlightControlChannels\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> FlightEnvironment / atmosphere sample\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> motion sample in body space\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> VehicleModel + VehicleActuators evaluation\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> FlightAeroState + FlightForces\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> integrate or hand off to external physics\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> FlightTelemetry\u003C/span>\u003C/span>\n\u003Cspan class=\"line\">\u003Cspan>  -> StallEntered / StallRecovered / GearStateChanged\u003C/span>\u003C/span>\u003C/code>\u003C/pre>\u003C/div>\n\t\t\t\t\u003C/div>\u003Ch2>Schedule Ordering\u003C/h2>\n\u003Cp>\u003Ccode>FlightSystems\u003C/code> is public and chained in this order:\u003C/p>\n\u003Col>\n\u003Cli>\u003Ccode>ResolveControls\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>SampleEnvironment\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>ComputeDynamics\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>IntegrateMotion\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>UpdateTelemetry\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>EmitMessages\u003C/code>\u003C/li>\n\u003C/ol>\n\u003Cp>This keeps downstream reads stable inside one frame:\u003C/p>\n\u003Cul>\n\u003Cli>control shaping and gear targets settle before any dynamics math runs\u003C/li>\n\u003Cli>atmosphere density and AGL are current before force evaluation\u003C/li>\n\u003Cli>telemetry always reflects the same frame&#39;s resolved channels and force state\u003C/li>\n\u003Cli>messages are emitted from final runtime state, not speculative inputs\u003C/li>\n\u003C/ul>\n\u003Cp>The plugin accepts injectable activate, deactivate, and update schedules so games can map the runtime into their own state machine or feature pipeline.\u003C/p>\n\u003Ch2>Coordinate Frames\u003C/h2>\n\u003Ch3>World frame\u003C/h3>\n\u003Cul>\n\u003Cli>right-handed Bevy 3D world\u003C/li>\n\u003Cli>\u003Ccode>Vec3::Y\u003C/code> is up\u003C/li>\n\u003Cli>\u003Ccode>Transform::translation.y\u003C/code> is mean-sea-level altitude input for atmosphere sampling\u003C/li>\n\u003C/ul>\n\u003Ch3>Body frame\u003C/h3>\n\u003Cul>\n\u003Cli>body right = \u003Ccode>transform.right()\u003C/code> = local \u003Ccode>+X\u003C/code>\u003C/li>\n\u003Cli>body up = \u003Ccode>transform.up()\u003C/code> = local \u003Ccode>+Y\u003C/code>\u003C/li>\n\u003Cli>body forward = \u003Ccode>transform.forward()\u003C/code> = local \u003Ccode>-Z\u003C/code>\u003C/li>\n\u003C/ul>\n\u003Cp>This means aircraft meshes should be authored so the nose points along Bevy forward.\u003C/p>\n\u003Ch3>Air-relative quantities\u003C/h3>\n\u003Cp>The runtime computes air-relative motion from:\u003C/p>\n\u003Cdiv class=\"code-block\" data-code=\"air velocity = linear velocity - (wind + gust)\" data-language=\"text\">\n\t\t\t\t\t\u003Cdiv class=\"shiki-theme-light\">\u003Cpre class=\"shiki github-light\" style=\"background-color:#fff;color:#24292e\" tabindex=\"0\">\u003Ccode>\u003Cspan class=\"line\">\u003Cspan>air velocity = linear velocity - (wind + gust)\u003C/span>\u003C/span>\u003C/code>\u003C/pre>\u003C/div>\n\t\t\t\t\t\u003Cdiv class=\"shiki-theme-dark\">\u003Cpre class=\"shiki github-dark\" style=\"background-color:#24292e;color:#e1e4e8\" tabindex=\"0\">\u003Ccode>\u003Cspan class=\"line\">\u003Cspan>air velocity = linear velocity - (wind + gust)\u003C/span>\u003C/span>\u003C/code>\u003C/pre>\u003C/div>\n\t\t\t\t\u003C/div>\u003Cp>From that it derives:\u003C/p>\n\u003Cul>\n\u003Cli>true airspeed magnitude\u003C/li>\n\u003Cli>body-forward speed\u003C/li>\n\u003Cli>body-right speed\u003C/li>\n\u003Cli>body-up speed\u003C/li>\n\u003Cli>angle of attack\u003C/li>\n\u003Cli>sideslip\u003C/li>\n\u003Cli>dynamic pressure\u003C/li>\n\u003C/ul>\n\u003Cp>\u003Ccode>FlightKinematics::angular_velocity_body_rps\u003C/code> is an axis-aligned body rotation vector:\u003C/p>\n\u003Cul>\n\u003Cli>\u003Ccode>x\u003C/code>: rotation about body right\u003C/li>\n\u003Cli>\u003Ccode>y\u003C/code>: rotation about body up\u003C/li>\n\u003Cli>\u003Ccode>z\u003C/code>: rotation about body forward\u003C/li>\n\u003C/ul>\n\u003Ch2>Control Mapping Layer\u003C/h2>\n\u003Cp>\u003Ccode>VehicleControlMap\u003C/code> resolves the user-authored \u003Ccode>FlightControlInput\u003C/code> surface into runtime \u003Ccode>FlightControlChannels\u003C/code>.\u003C/p>\n\u003Cp>Each channel binding owns:\u003C/p>\n\u003Cul>\n\u003Cli>an input source such as \u003Ccode>Pitch\u003C/code>, \u003Ccode>Throttle\u003C/code>, or \u003Ccode>Transition\u003C/code>\u003C/li>\n\u003Cli>optional trim coupling\u003C/li>\n\u003Cli>scalar gain and offset\u003C/li>\n\u003Cli>clamp range\u003C/li>\n\u003Cli>slew-up and slew-down rates\u003C/li>\n\u003Cli>axis shaping exponent\u003C/li>\n\u003C/ul>\n\u003Cp>This is the layer that makes the crate generic:\u003C/p>\n\u003Cul>\n\u003Cli>spacecraft no longer hardcode yaw or collective for translation\u003C/li>\n\u003Cli>hybrid VTOL no longer hardcode a special power handoff in the control system\u003C/li>\n\u003Cli>alternate games can reuse one model with completely different control semantics\u003C/li>\n\u003C/ul>\n\u003Ch2>Model Evaluation Layer\u003C/h2>\n\u003Cp>\u003Ccode>compute_vehicle_dynamics\u003C/code> is now a single system that queries \u003Ccode>VehicleModel\u003C/code>, \u003Ccode>VehicleActuators\u003C/code>, and \u003Ccode>GroundHandling\u003C/code>, then dispatches into the pure evaluators.\u003C/p>\n\u003Ch3>Fixed-wing path\u003C/h3>\n\u003Cp>\u003Ccode>evaluate_fixed_wing_with_motion\u003C/code> handles:\u003C/p>\n\u003Col>\n\u003Cli>AoA and sideslip extraction\u003C/li>\n\u003Cli>qbar evaluation\u003C/li>\n\u003Cli>lift, drag, side-force, and thrust evaluation\u003C/li>\n\u003Cli>stall hysteresis target generation\u003C/li>\n\u003Cli>control-surface, stability, damping, and assist torques\u003C/li>\n\u003Cli>gear drag and ground-effect scaling\u003C/li>\n\u003C/ol>\n\u003Ch3>Rotorcraft path\u003C/h3>\n\u003Cp>\u003Ccode>evaluate_rotorcraft\u003C/code> handles:\u003C/p>\n\u003Col>\n\u003Cli>lift-channel-driven rotor thrust\u003C/li>\n\u003Cli>translational lift gain\u003C/li>\n\u003Cli>parasite and side drag\u003C/li>\n\u003Cli>torque channels and anti-torque coupling\u003C/li>\n\u003Cli>hover assist torques\u003C/li>\n\u003Cli>ground-effect scaling\u003C/li>\n\u003C/ol>\n\u003Ch3>Hybrid path\u003C/h3>\n\u003Cp>\u003Ccode>evaluate_hybrid\u003C/code> combines the fixed-wing and rotorcraft sub-models, but the combination is now expressed by model and actuator config:\u003C/p>\n\u003Col>\n\u003Cli>\u003Ccode>HybridVehicleModel\u003C/code> owns the wingborne blend window\u003C/li>\n\u003Cli>\u003Ccode>HybridActuators\u003C/code> owns rotor thrust routing from hover axis to cruise axis\u003C/li>\n\u003Cli>control-channel mapping decides whether forward and vertical thrust stay coupled or separate\u003C/li>\n\u003Cli>the evaluator blends fixed-wing lift or torque with rotorcraft lift or torque using the resolved transition channel\u003C/li>\n\u003C/ol>\n\u003Ch3>Spacecraft path\u003C/h3>\n\u003Cp>\u003Ccode>evaluate_spacecraft\u003C/code> provides a pure 6-DOF thruster model with no atmosphere:\u003C/p>\n\u003Col>\n\u003Cli>forward, lateral, and vertical thrust channels\u003C/li>\n\u003Cli>configurable body-axis translation directions\u003C/li>\n\u003Cli>configurable angular torque authority\u003C/li>\n\u003Cli>configurable angular damping\u003C/li>\n\u003Cli>optional linear drag for arcade game-feel\u003C/li>\n\u003Cli>zero- or nonzero-gravity operation through \u003Ccode>FlightBody\u003C/code>\u003C/li>\n\u003C/ol>\n\u003Ch2>Ground Handling Layer\u003C/h2>\n\u003Cp>\u003Ccode>GroundHandling\u003C/code> replaces family-specific contact branching.\u003C/p>\n\u003Cp>It owns:\u003C/p>\n\u003Cul>\n\u003Cli>whether contact is enabled at all\u003C/li>\n\u003Cli>\u003Ccode>ContactGeometry\u003C/code>\u003C/li>\n\u003Cli>longitudinal damping\u003C/li>\n\u003Cli>lateral damping\u003C/li>\n\u003Cli>angular damping\u003C/li>\n\u003C/ul>\n\u003Cp>Every vehicle family uses the same contact resolver. Different rollout or skid behavior now comes from per-vehicle config, not from hardcoded \u003Ccode>&quot;fixed-wing vs VTOL&quot;\u003C/code> rules inside the system.\u003C/p>\n\u003Ch2>Integration Boundary\u003C/h2>\n\u003Cp>By default \u003Ccode>FlightBody::use_internal_integration = true\u003C/code>, so the crate updates:\u003C/p>\n\u003Cul>\n\u003Cli>\u003Ccode>FlightKinematics\u003C/code>\u003C/li>\n\u003Cli>\u003Ccode>Transform\u003C/code>\u003C/li>\n\u003C/ul>\n\u003Cp>using the resolved total force and total torque.\u003C/p>\n\u003Cp>If a project wants an external physics backend, the intended boundary is:\u003C/p>\n\u003Cul>\n\u003Cli>keep \u003Ccode>ResolveControls\u003C/code>, \u003Ccode>SampleEnvironment\u003C/code>, \u003Ccode>ComputeDynamics\u003C/code>, \u003Ccode>UpdateTelemetry\u003C/code>, and \u003Ccode>EmitMessages\u003C/code>\u003C/li>\n\u003Cli>disable internal motion integration on the entity\u003C/li>\n\u003Cli>read \u003Ccode>FlightForces\u003C/code> and apply them through the external backend\u003C/li>\n\u003Cli>write the resulting \u003Ccode>Transform\u003C/code> and \u003Ccode>FlightKinematics\u003C/code> back into the shared runtime state\u003C/li>\n\u003C/ul>\n\u003Cp>That keeps the reusable atmosphere and flight-model code independent from Avian, Rapier, or project-specific gameplay crates.\u003C/p>\n\u003Ch2>Debug Surface\u003C/h2>\n\u003Cp>The crate publishes its debug and instrumentation surface through normal ECS state:\u003C/p>\n\u003Cul>\n\u003Cli>\u003Ccode>FlightControlChannels\u003C/code> for resolved command inspection\u003C/li>\n\u003Cli>\u003Ccode>FlightAeroState\u003C/code> for atmosphere, qbar, AoA, sideslip, and air-relative velocity\u003C/li>\n\u003Cli>\u003Ccode>FlightForces\u003C/code> for lift, drag, thrust, gravity, and torque breakdown\u003C/li>\n\u003Cli>\u003Ccode>FlightTelemetry\u003C/code> for instrument-style UI consumption\u003C/li>\n\u003Cli>\u003Ccode>StallState\u003C/code> and \u003Ccode>LandingGearState\u003C/code> for state transitions\u003C/li>\n\u003Cli>messages for stall and gear changes\u003C/li>\n\u003C/ul>\n\u003Cp>The examples and lab deliberately expose these values in overlays and gizmo arrows so BRP and E2E can inspect both behavior and visuals.\u003C/p>\n\u003Ch2>Testing Strategy\u003C/h2>\n\u003Cp>The crate verifies the pure and Bevy-facing layers separately:\u003C/p>\n\u003Cul>\n\u003Cli>pure unit tests for atmosphere sampling and model math\u003C/li>\n\u003Cli>Bevy integration tests for plugin wiring, generic control resolution, state updates, and message emission\u003C/li>\n\u003Cli>example workspace presets that exercise the public generic surface\u003C/li>\n\u003Cli>a crate-local lab with E2E scenarios for fixed-wing climb, stall recovery, rotorcraft hover, and hybrid transition\u003C/li>\n\u003C/ul>\n",title:"Architecture",description:"Architecture documentation",rawMarkdown:"## Layering\n\n`saddle-vehicle-flight` keeps reusable flight math separate from Bevy orchestration.\n\nPure or mostly pure logic:\n\n1. `atmosphere.rs`\n2. `math.rs`\n3. `model/common.rs`\n4. `model/fixed_wing.rs`\n5. `model/helicopter.rs`\n6. `model/vtol.rs`\n7. `model/spacecraft.rs`\n\nBevy-facing orchestration:\n\n1. `components.rs`\n2. `config.rs`\n3. `messages.rs`\n4. `telemetry.rs`\n5. `systems/*`\n6. `lib.rs`\n\nThe main architectural shift is that the runtime no longer branches directly on four independent public config components. Instead, the public surface is split into four orthogonal pieces:\n\n1. `VehicleModel`: the model family and its aerodynamic or inertial data\n2. `VehicleActuators`: thrust axes, surface authority, torque authority, and hybrid thrust routing\n3. `VehicleControlMap`: how `FlightControlInput` turns into resolved channels\n4. `GroundHandling`: per-vehicle contact and damping behavior\n\nThat means input semantics, thrust routing, and contact behavior are now configurable without rewriting the core systems.\n\n## Runtime Flow\n\n```text\nFlightControlInput\n  -> VehicleControlMap\n  -> FlightControlChannels\n  -> FlightEnvironment / atmosphere sample\n  -> motion sample in body space\n  -> VehicleModel + VehicleActuators evaluation\n  -> FlightAeroState + FlightForces\n  -> integrate or hand off to external physics\n  -> FlightTelemetry\n  -> StallEntered / StallRecovered / GearStateChanged\n```\n\n## Schedule Ordering\n\n`FlightSystems` is public and chained in this order:\n\n1. `ResolveControls`\n2. `SampleEnvironment`\n3. `ComputeDynamics`\n4. `IntegrateMotion`\n5. `UpdateTelemetry`\n6. `EmitMessages`\n\nThis keeps downstream reads stable inside one frame:\n\n- control shaping and gear targets settle before any dynamics math runs\n- atmosphere density and AGL are current before force evaluation\n- telemetry always reflects the same frame's resolved channels and force state\n- messages are emitted from final runtime state, not speculative inputs\n\nThe plugin accepts injectable activate, deactivate, and update schedules so games can map the runtime into their own state machine or feature pipeline.\n\n## Coordinate Frames\n\n### World frame\n\n- right-handed Bevy 3D world\n- `Vec3::Y` is up\n- `Transform::translation.y` is mean-sea-level altitude input for atmosphere sampling\n\n### Body frame\n\n- body right = `transform.right()` = local `+X`\n- body up = `transform.up()` = local `+Y`\n- body forward = `transform.forward()` = local `-Z`\n\nThis means aircraft meshes should be authored so the nose points along Bevy forward.\n\n### Air-relative quantities\n\nThe runtime computes air-relative motion from:\n\n```text\nair velocity = linear velocity - (wind + gust)\n```\n\nFrom that it derives:\n\n- true airspeed magnitude\n- body-forward speed\n- body-right speed\n- body-up speed\n- angle of attack\n- sideslip\n- dynamic pressure\n\n`FlightKinematics::angular_velocity_body_rps` is an axis-aligned body rotation vector:\n\n- `x`: rotation about body right\n- `y`: rotation about body up\n- `z`: rotation about body forward\n\n## Control Mapping Layer\n\n`VehicleControlMap` resolves the user-authored `FlightControlInput` surface into runtime `FlightControlChannels`.\n\nEach channel binding owns:\n\n- an input source such as `Pitch`, `Throttle`, or `Transition`\n- optional trim coupling\n- scalar gain and offset\n- clamp range\n- slew-up and slew-down rates\n- axis shaping exponent\n\nThis is the layer that makes the crate generic:\n\n- spacecraft no longer hardcode yaw or collective for translation\n- hybrid VTOL no longer hardcode a special power handoff in the control system\n- alternate games can reuse one model with completely different control semantics\n\n## Model Evaluation Layer\n\n`compute_vehicle_dynamics` is now a single system that queries `VehicleModel`, `VehicleActuators`, and `GroundHandling`, then dispatches into the pure evaluators.\n\n### Fixed-wing path\n\n`evaluate_fixed_wing_with_motion` handles:\n\n1. AoA and sideslip extraction\n2. qbar evaluation\n3. lift, drag, side-force, and thrust evaluation\n4. stall hysteresis target generation\n5. control-surface, stability, damping, and assist torques\n6. gear drag and ground-effect scaling\n\n### Rotorcraft path\n\n`evaluate_rotorcraft` handles:\n\n1. lift-channel-driven rotor thrust\n2. translational lift gain\n3. parasite and side drag\n4. torque channels and anti-torque coupling\n5. hover assist torques\n6. ground-effect scaling\n\n### Hybrid path\n\n`evaluate_hybrid` combines the fixed-wing and rotorcraft sub-models, but the combination is now expressed by model and actuator config:\n\n1. `HybridVehicleModel` owns the wingborne blend window\n2. `HybridActuators` owns rotor thrust routing from hover axis to cruise axis\n3. control-channel mapping decides whether forward and vertical thrust stay coupled or separate\n4. the evaluator blends fixed-wing lift or torque with rotorcraft lift or torque using the resolved transition channel\n\n### Spacecraft path\n\n`evaluate_spacecraft` provides a pure 6-DOF thruster model with no atmosphere:\n\n1. forward, lateral, and vertical thrust channels\n2. configurable body-axis translation directions\n3. configurable angular torque authority\n4. configurable angular damping\n5. optional linear drag for arcade game-feel\n6. zero- or nonzero-gravity operation through `FlightBody`\n\n## Ground Handling Layer\n\n`GroundHandling` replaces family-specific contact branching.\n\nIt owns:\n\n- whether contact is enabled at all\n- `ContactGeometry`\n- longitudinal damping\n- lateral damping\n- angular damping\n\nEvery vehicle family uses the same contact resolver. Different rollout or skid behavior now comes from per-vehicle config, not from hardcoded `\"fixed-wing vs VTOL\"` rules inside the system.\n\n## Integration Boundary\n\nBy default `FlightBody::use_internal_integration = true`, so the crate updates:\n\n- `FlightKinematics`\n- `Transform`\n\nusing the resolved total force and total torque.\n\nIf a project wants an external physics backend, the intended boundary is:\n\n- keep `ResolveControls`, `SampleEnvironment`, `ComputeDynamics`, `UpdateTelemetry`, and `EmitMessages`\n- disable internal motion integration on the entity\n- read `FlightForces` and apply them through the external backend\n- write the resulting `Transform` and `FlightKinematics` back into the shared runtime state\n\nThat keeps the reusable atmosphere and flight-model code independent from Avian, Rapier, or project-specific gameplay crates.\n\n## Debug Surface\n\nThe crate publishes its debug and instrumentation surface through normal ECS state:\n\n- `FlightControlChannels` for resolved command inspection\n- `FlightAeroState` for atmosphere, qbar, AoA, sideslip, and air-relative velocity\n- `FlightForces` for lift, drag, thrust, gravity, and torque breakdown\n- `FlightTelemetry` for instrument-style UI consumption\n- `StallState` and `LandingGearState` for state transitions\n- messages for stall and gear changes\n\nThe examples and lab deliberately expose these values in overlays and gizmo arrows so BRP and E2E can inspect both behavior and visuals.\n\n## Testing Strategy\n\nThe crate verifies the pure and Bevy-facing layers separately:\n\n- pure unit tests for atmosphere sampling and model math\n- Bevy integration tests for plugin wiring, generic control resolution, state updates, and message emission\n- example workspace presets that exercise the public generic surface\n- a crate-local lab with E2E scenarios for fixed-wing climb, stall recovery, rotorcraft hover, and hybrid transition\n",slug:"architecture"},uses:{params:["slug"]}}],
+							form: null,
+							error: null
+						});
+					});
+				}
+			</script>
+		</div>
+	</body>
+</html>
