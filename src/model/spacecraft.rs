@@ -1,7 +1,9 @@
 use crate::{
-    components::{FlightAssist, FlightBody, FlightControlInput, LandingGearState},
-    config::SpacecraftConfig,
-    model::common::EvaluatedFlight,
+    components::{
+        FlightAssist, FlightBody, FlightControlChannels, FlightControlInput, LandingGearState,
+    },
+    config::{SpacecraftActuators, SpacecraftModel},
+    model::common::{EvaluatedFlight, axis_world},
     telemetry::{FlightAeroState, FlightForces},
 };
 use bevy::prelude::*;
@@ -12,43 +14,51 @@ pub(crate) fn evaluate_spacecraft(
     motion: MotionSample,
     transform: &Transform,
     body: FlightBody,
-    spacecraft: SpacecraftConfig,
-    controls: crate::components::ResolvedFlightControls,
+    model: SpacecraftModel,
+    actuators: SpacecraftActuators,
+    controls: FlightControlChannels,
     _control_input: FlightControlInput,
     assist: FlightAssist,
     current_aero: FlightAeroState,
     _gear: LandingGearState,
 ) -> EvaluatedFlight {
-    // --- linear forces ---
-    // Main thrust along forward axis
-    let thrust_forward = controls.throttle.clamp(0.0, 1.0) * spacecraft.max_thrust_newtons;
-    let thrust_world = motion.forward_world * thrust_forward;
+    let forward_world = axis_world(
+        transform,
+        actuators.forward_axis_local,
+        motion.forward_world,
+    );
+    let lateral_world = axis_world(transform, actuators.lateral_axis_local, motion.right_world);
+    let vertical_world = axis_world(transform, actuators.vertical_axis_local, motion.up_world);
 
-    // RCS translation (optional lateral and vertical thrusters)
-    let rcs_right = controls.yaw * spacecraft.rcs_thrust_newtons;
-    let rcs_up = (controls.collective - 0.5) * 2.0 * spacecraft.rcs_thrust_newtons;
-    let rcs_world = motion.right_world * rcs_right + motion.up_world * rcs_up;
+    let thrust_world = forward_world
+        * controls.forward_thrust.clamp(-1.0, 1.0)
+        * actuators.max_forward_thrust_newtons;
+    let lateral_world = lateral_world
+        * controls.lateral_thrust.clamp(-1.0, 1.0)
+        * actuators.max_lateral_thrust_newtons;
+    let vertical_world = vertical_world
+        * controls.vertical_thrust.clamp(-1.0, 1.0)
+        * actuators.max_vertical_thrust_newtons;
 
-    // Linear drag (configurable — zero for pure Newtonian, nonzero for game-feel)
     let speed = motion.airspeed_mps;
     let drag_world = if speed > 0.01 {
-        -motion.air_direction_world * speed * spacecraft.linear_drag_coefficient * body.mass_kg
+        -motion.air_direction_world * speed * model.linear_drag_coefficient * body.mass_kg
     } else {
         Vec3::ZERO
     };
 
     let gravity_world = Vec3::NEG_Y * body.mass_kg * body.gravity_acceleration_mps2;
-    let total_force_world = thrust_world + rcs_world + drag_world + gravity_world;
+    let total_force_world =
+        thrust_world + lateral_world + vertical_world + drag_world + gravity_world;
 
-    // --- torques ---
     let control_torque_body_nm = Vec3::new(
-        -controls.pitch * spacecraft.pitch_torque_authority,
-        controls.yaw * spacecraft.yaw_torque_authority,
-        -controls.roll * spacecraft.roll_torque_authority,
+        -controls.pitch * actuators.pitch_torque_authority,
+        controls.yaw * actuators.yaw_torque_authority,
+        -controls.roll * actuators.roll_torque_authority,
     );
 
     let damping_torque_body_nm =
-        -motion.angular_velocity_body_rps * spacecraft.angular_damping * 1_000.0;
+        -motion.angular_velocity_body_rps * model.angular_damping * 1_000.0;
 
     let assist_torque_body_nm = Vec3::new(
         -motion.forward_world.y * assist.wings_leveling * 1_500.0,
@@ -73,7 +83,7 @@ pub(crate) fn evaluate_spacecraft(
             sideslip_rad: 0.0,
         },
         forces: FlightForces {
-            thrust_world_newtons: thrust_world + rcs_world,
+            thrust_world_newtons: thrust_world + lateral_world + vertical_world,
             lift_world_newtons: Vec3::ZERO,
             drag_world_newtons: drag_world,
             side_force_world_newtons: Vec3::ZERO,

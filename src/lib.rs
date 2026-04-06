@@ -12,12 +12,15 @@ pub use atmosphere::{
     sample_us_standard_atmosphere_1976,
 };
 pub use components::{
-    FlightAssist, FlightBody, FlightControlInput, FlightEnvironment, FlightKinematics,
-    LandingGearState, StallState,
+    FlightAssist, FlightBody, FlightControlChannels, FlightControlInput, FlightEnvironment,
+    FlightKinematics, LandingGearState, StallState,
 };
 pub use config::{
-    ContactGeometry, FixedWingAircraft, FlightControlResponse, HelicopterAircraft, PowerResponse,
-    SpacecraftConfig, VtolAircraft,
+    ChannelResponse, ContactGeometry, ControlChannelBinding, ControlInputSource,
+    FixedWingActuators, FixedWingModel, GroundHandling, HybridActuators, HybridVehicleModel,
+    RotorcraftActuators, RotorcraftModel, SpacecraftActuators, SpacecraftModel, ThrustRouting,
+    TrimInputSource, VehicleActuatorKind, VehicleActuators, VehicleControlMap, VehicleModel,
+    VehicleModelKind,
 };
 pub use messages::{GearStateChanged, StallEntered, StallRecovered};
 pub use telemetry::{FlightAeroState, FlightForces, FlightTelemetry};
@@ -82,23 +85,37 @@ impl Plugin for FlightPlugin {
             .add_message::<StallRecovered>()
             .add_message::<GearStateChanged>()
             .register_type::<AtmosphereSample>()
+            .register_type::<ChannelResponse>()
             .register_type::<ContactGeometry>()
-            .register_type::<FixedWingAircraft>()
+            .register_type::<ControlChannelBinding>()
+            .register_type::<ControlInputSource>()
             .register_type::<FlightAeroState>()
             .register_type::<FlightAssist>()
             .register_type::<FlightBody>()
+            .register_type::<FlightControlChannels>()
             .register_type::<FlightControlInput>()
-            .register_type::<FlightControlResponse>()
             .register_type::<FlightEnvironment>()
             .register_type::<FlightForces>()
             .register_type::<FlightKinematics>()
             .register_type::<FlightTelemetry>()
-            .register_type::<HelicopterAircraft>()
+            .register_type::<FixedWingActuators>()
+            .register_type::<FixedWingModel>()
+            .register_type::<GroundHandling>()
+            .register_type::<HybridActuators>()
+            .register_type::<HybridVehicleModel>()
             .register_type::<LandingGearState>()
-            .register_type::<PowerResponse>()
+            .register_type::<RotorcraftActuators>()
+            .register_type::<RotorcraftModel>()
+            .register_type::<SpacecraftActuators>()
+            .register_type::<SpacecraftModel>()
             .register_type::<StallState>()
-            .register_type::<SpacecraftConfig>()
-            .register_type::<VtolAircraft>()
+            .register_type::<ThrustRouting>()
+            .register_type::<TrimInputSource>()
+            .register_type::<VehicleActuatorKind>()
+            .register_type::<VehicleActuators>()
+            .register_type::<VehicleControlMap>()
+            .register_type::<VehicleModel>()
+            .register_type::<VehicleModelKind>()
             .add_systems(
                 self.activate_schedule,
                 systems::activation::activate_runtime,
@@ -125,12 +142,7 @@ impl Plugin for FlightPlugin {
                     systems::control::resolve_controls.in_set(FlightSystems::ResolveControls),
                     systems::environment::sample_environment
                         .in_set(FlightSystems::SampleEnvironment),
-                    systems::dynamics::compute_fixed_wing_dynamics
-                        .in_set(FlightSystems::ComputeDynamics),
-                    systems::dynamics::compute_helicopter_dynamics
-                        .in_set(FlightSystems::ComputeDynamics),
-                    systems::dynamics::compute_vtol_dynamics.in_set(FlightSystems::ComputeDynamics),
-                    systems::dynamics::compute_spacecraft_dynamics
+                    systems::dynamics::compute_vehicle_dynamics
                         .in_set(FlightSystems::ComputeDynamics),
                     (
                         systems::integration::integrate_motion

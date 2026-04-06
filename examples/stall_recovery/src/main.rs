@@ -5,10 +5,8 @@ use saddle_camera_third_person_camera::{
     AutoRecenterSettings, CollisionSettings, FollowAlignment, OrbitSettings, SmoothingSettings,
     ThirdPersonCamera, ThirdPersonCameraSettings, ThirdPersonCameraTarget, ZoomSettings,
 };
-use saddle_vehicle_flight::{
-    FixedWingAircraft, FlightAeroState, FlightControlInput, FlightTelemetry,
-};
-use support::configure_example_app_with_follow_camera;
+use saddle_vehicle_flight::{FlightAeroState, FlightControlInput, FlightTelemetry};
+use support::{ExamplePilot, configure_example_app_with_follow_camera, spawn_fixed_wing_demo};
 
 #[derive(Resource, Debug, Clone, Copy)]
 struct StallDemoState {
@@ -29,75 +27,16 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn((
-        Name::new("Sun"),
-        DirectionalLight {
-            illuminance: 20_000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(18.0, 24.0, 12.0).looking_at(Vec3::ZERO, Vec3::Y),
-    ));
-    commands.spawn((
-        Name::new("Fill Light"),
-        PointLight {
-            intensity: 30_000.0,
-            range: 180.0,
-            ..default()
-        },
-        Transform::from_xyz(-16.0, 14.0, 28.0),
-    ));
-
-    let aircraft = commands
-        .spawn((
-            Name::new("Stall Demo Aircraft"),
-            FixedWingAircraft::trainer(),
-            FixedWingAircraft::trainer_body(),
-            saddle_vehicle_flight::FlightAssist {
-                wings_leveling: 0.08,
-                coordinated_turn: 0.06,
-                ..default()
-            },
-            saddle_vehicle_flight::FlightEnvironment::default(),
-            saddle_vehicle_flight::FlightKinematics {
-                linear_velocity_world_mps: Vec3::new(0.0, 0.0, -52.0),
-                ..default()
-            },
-            FlightControlInput {
-                throttle: 0.58,
-                ..default()
-            },
-            Mesh3d(meshes.add(Cuboid::new(1.0, 0.55, 5.2))),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: Color::srgb(0.84, 0.25, 0.17),
-                perceptual_roughness: 0.48,
-                ..default()
-            })),
-            Transform::from_xyz(0.0, 120.0, 50.0),
-            children![
-                (
-                    Name::new("Wing"),
-                    Mesh3d(meshes.add(Cuboid::new(13.0, 0.18, 1.4))),
-                    MeshMaterial3d(materials.add(StandardMaterial {
-                        base_color: Color::srgb(0.94, 0.94, 0.96),
-                        perceptual_roughness: 0.56,
-                        ..default()
-                    })),
-                    Transform::from_xyz(0.0, 0.0, 0.1),
-                ),
-                (
-                    Name::new("Tailplane"),
-                    Mesh3d(meshes.add(Cuboid::new(4.2, 0.16, 0.9))),
-                    MeshMaterial3d(materials.add(StandardMaterial {
-                        base_color: Color::srgb(0.94, 0.94, 0.96),
-                        perceptual_roughness: 0.56,
-                        ..default()
-                    })),
-                    Transform::from_xyz(0.0, 0.35, 2.1),
-                )
-            ],
-        ))
-        .id();
+    let aircraft = spawn_fixed_wing_demo(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        "Stall Demo Aircraft",
+        Transform::from_xyz(0.0, 120.0, 50.0),
+        Vec3::new(0.0, 0.0, -52.0),
+        0.58,
+        true,
+    );
 
     commands.spawn((
         Name::new("Stall Demo Camera"),
@@ -137,30 +76,13 @@ fn setup(
         Transform::from_xyz(-16.0, 16.0, 38.0).looking_at(Vec3::new(0.0, 115.0, 0.0), Vec3::Y),
     ));
 
-    commands.spawn((
-        Name::new("Overlay"),
-        Text::new("stall"),
-        TextFont {
-            font_size: 16.0,
-            ..default()
-        },
-        TextColor(Color::WHITE),
-        Node {
-            position_type: PositionType::Absolute,
-            left: Val::Px(18.0),
-            top: Val::Px(18.0),
-            width: Val::Px(460.0),
-            padding: UiRect::all(Val::Px(12.0)),
-            ..default()
-        },
-        BackgroundColor(Color::srgba(0.05, 0.06, 0.08, 0.78)),
-    ));
+    support::spawn_overlay(&mut commands, "Stall Recovery Example");
 }
 
 fn script_demo(
     time: Res<Time>,
     mut state: ResMut<StallDemoState>,
-    mut aircraft: Query<&mut FlightControlInput, With<FixedWingAircraft>>,
+    mut aircraft: Query<&mut FlightControlInput, With<ExamplePilot>>,
 ) {
     state.elapsed += time.delta_secs();
     let Ok(mut input) = aircraft.single_mut() else {
@@ -191,8 +113,8 @@ fn script_demo(
 
 fn update_overlay(
     state: Res<StallDemoState>,
-    aircraft: Query<(&FlightTelemetry, &FlightAeroState), With<FixedWingAircraft>>,
-    mut overlay: Query<&mut Text, (With<Node>, Without<FixedWingAircraft>)>,
+    aircraft: Query<(&FlightTelemetry, &FlightAeroState), With<ExamplePilot>>,
+    mut overlay: Query<&mut Text, (With<Node>, Without<ExamplePilot>)>,
 ) {
     let Ok((telemetry, aero)) = aircraft.single() else {
         return;
@@ -202,13 +124,13 @@ fn update_overlay(
     };
 
     text.0 = format!(
-        "Stall Recovery Example\nPhase {:.1}s\n\nTAS {:>6.1} m/s  Alt {:>6.1} m\nAoA {:>6.1} deg  Slip {:>6.1} deg\nThrottle {:>4.2}  Stalled {}\n\nThis example scripts: pitch-up -> stall -> unload + power -> recover\nMouse: orbit camera  Scroll: zoom",
+        "Stall Recovery Example\nPhase {:.1}s\n\nTAS {:>6.1} m/s  Alt {:>6.1} m\nAoA {:>6.1} deg  Slip {:>6.1} deg\nFwd {:>4.2}  Stalled {}\n\nThis example scripts: pitch-up -> stall -> unload + power -> recover\nMouse: orbit camera  Scroll: zoom",
         state.elapsed,
         telemetry.true_airspeed_mps,
         telemetry.altitude_msl_m,
         telemetry.angle_of_attack_deg,
         telemetry.sideslip_deg,
-        telemetry.throttle,
+        telemetry.forward_thrust,
         telemetry.stalled,
     );
     let _ = aero;

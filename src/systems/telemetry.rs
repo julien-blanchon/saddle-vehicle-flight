@@ -1,5 +1,5 @@
 use crate::{
-    components::{FlightKinematics, LandingGearState, ResolvedFlightControls, StallState},
+    components::{FlightControlChannels, FlightKinematics, LandingGearState, StallState},
     model::fixed_wing::approximate_ias,
     telemetry::{FlightAeroState, FlightTelemetry},
 };
@@ -9,7 +9,7 @@ pub(crate) fn update_telemetry(
     mut query: Query<(
         &FlightAeroState,
         &FlightKinematics,
-        &ResolvedFlightControls,
+        &FlightControlChannels,
         &LandingGearState,
         &StallState,
         &mut FlightTelemetry,
@@ -24,8 +24,9 @@ pub(crate) fn update_telemetry(
         telemetry.vertical_speed_mps = kinematics.linear_velocity_world_mps.y;
         telemetry.angle_of_attack_deg = aero.angle_of_attack_rad.to_degrees();
         telemetry.sideslip_deg = aero.sideslip_rad.to_degrees();
-        telemetry.throttle = controls.throttle;
-        telemetry.collective = controls.collective;
+        telemetry.forward_thrust = controls.forward_thrust;
+        telemetry.vertical_thrust = controls.vertical_thrust;
+        telemetry.lateral_thrust = controls.lateral_thrust;
         telemetry.vtol_transition = controls.transition;
         telemetry.gear_position = gear.position;
         telemetry.gear_deployed = gear.deployed();

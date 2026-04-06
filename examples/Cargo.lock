@@ -5033,6 +5033,7 @@ dependencies = [
  "bevy",
  "saddle-pane",
  "saddle-vehicle-flight",
+ "saddle-vehicle-flight-example-presets",
  "saddle-vehicle-flight-example-support",
 ]
 
@@ -5058,6 +5059,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "saddle-vehicle-flight-example-presets"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "saddle-vehicle-flight",
+]
+
+[[package]]
 name = "saddle-vehicle-flight-example-stall-recovery"
 version = "0.1.0"
 dependencies = [
@@ -5080,6 +5089,7 @@ dependencies = [
  "saddle-camera-third-person-camera",
  "saddle-pane",
  "saddle-vehicle-flight",
+ "saddle-vehicle-flight-example-presets",
 ]
 
 [[package]]

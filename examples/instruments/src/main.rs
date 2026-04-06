@@ -5,9 +5,7 @@ use saddle_camera_third_person_camera::{
     AutoRecenterSettings, CollisionSettings, FollowAlignment, OrbitSettings, SmoothingSettings,
     ThirdPersonCamera, ThirdPersonCameraSettings, ThirdPersonCameraTarget, ZoomSettings,
 };
-use saddle_vehicle_flight::{
-    FixedWingAircraft, FlightAeroState, FlightControlInput, FlightTelemetry,
-};
+use saddle_vehicle_flight::{FlightAeroState, FlightControlInput, FlightTelemetry};
 use support::{
     configure_example_app_with_follow_camera, spawn_fixed_wing_demo, spawn_lights_and_ground,
     spawn_overlay,
@@ -78,7 +76,7 @@ fn setup(
     spawn_overlay(&mut commands, "Instrument Overlay Example");
 }
 
-fn fly_demo(time: Res<Time>, mut query: Query<&mut FlightControlInput, With<FixedWingAircraft>>) {
+fn fly_demo(time: Res<Time>, mut query: Query<&mut FlightControlInput>) {
     let Ok(mut input) = query.single_mut() else {
         return;
     };
@@ -90,8 +88,8 @@ fn fly_demo(time: Res<Time>, mut query: Query<&mut FlightControlInput, With<Fixe
 }
 
 fn update_overlay(
-    aircraft: Query<(&FlightTelemetry, &FlightAeroState), With<FixedWingAircraft>>,
-    mut overlay: Query<&mut Text, (With<Node>, Without<FixedWingAircraft>)>,
+    aircraft: Query<(&FlightTelemetry, &FlightAeroState)>,
+    mut overlay: Query<&mut Text, With<Node>>,
 ) {
     let Ok((telemetry, aero)) = aircraft.single() else {
         return;
@@ -101,7 +99,7 @@ fn update_overlay(
     };
 
     text.0 = format!(
-        "Instrument Overlay Example\n\nTrue airspeed {:>6.1} m/s\nIndicated airspeed {:>6.1} m/s\nAltitude MSL {:>6.1} m\nVertical speed {:>6.1} m/s\nAngle of attack {:>6.1} deg\nSideslip {:>6.1} deg\nDynamic pressure {:>7.1} Pa\nThrottle {:>4.2}  Gear {:>4.2}\n\nMouse: orbit camera  Scroll: zoom",
+        "Instrument Overlay Example\n\nTrue airspeed {:>6.1} m/s\nIndicated airspeed {:>6.1} m/s\nAltitude MSL {:>6.1} m\nVertical speed {:>6.1} m/s\nAngle of attack {:>6.1} deg\nSideslip {:>6.1} deg\nDynamic pressure {:>7.1} Pa\nFwd {:>4.2}  Vert {:>4.2}  Lat {:>4.2}  Gear {:>4.2}\n\nMouse: orbit camera  Scroll: zoom",
         telemetry.true_airspeed_mps,
         telemetry.indicated_airspeed_mps,
         telemetry.altitude_msl_m,
@@ -109,7 +107,9 @@ fn update_overlay(
         telemetry.angle_of_attack_deg,
         telemetry.sideslip_deg,
         aero.dynamic_pressure_pa,
-        telemetry.throttle,
+        telemetry.forward_thrust,
+        telemetry.vertical_thrust,
+        telemetry.lateral_thrust,
         telemetry.gear_position,
     );
 }

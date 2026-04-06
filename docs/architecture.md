@@ -23,16 +23,24 @@ Bevy-facing orchestration:
 5. `systems/*`
 6. `lib.rs`
 
-The pure modules own atmosphere sampling, angle-of-attack and sideslip math, coefficient evaluation, and force or torque composition. The Bevy layer only resolves control state, updates runtime components, integrates motion when requested, and emits messages.
+The main architectural shift is that the runtime no longer branches directly on four independent public config components. Instead, the public surface is split into four orthogonal pieces:
+
+1. `VehicleModel`: the model family and its aerodynamic or inertial data
+2. `VehicleActuators`: thrust axes, surface authority, torque authority, and hybrid thrust routing
+3. `VehicleControlMap`: how `FlightControlInput` turns into resolved channels
+4. `GroundHandling`: per-vehicle contact and damping behavior
+
+That means input semantics, thrust routing, and contact behavior are now configurable without rewriting the core systems.
 
 ## Runtime Flow
 
 ```text
 FlightControlInput
-  -> ResolveControls
+  -> VehicleControlMap
+  -> FlightControlChannels
   -> FlightEnvironment / atmosphere sample
-  -> sample body-relative motion
-  -> fixed-wing, helicopter, VTOL, or spacecraft model path
+  -> motion sample in body space
+  -> VehicleModel + VehicleActuators evaluation
   -> FlightAeroState + FlightForces
   -> integrate or hand off to external physics
   -> FlightTelemetry
@@ -52,9 +60,9 @@ FlightControlInput
 
 This keeps downstream reads stable inside one frame:
 
-- control shaping and gear targets settle before any aerodynamic math runs
+- control shaping and gear targets settle before any dynamics math runs
 - atmosphere density and AGL are current before force evaluation
-- telemetry always reflects the same frame's resolved aero state
+- telemetry always reflects the same frame's resolved channels and force state
 - messages are emitted from final runtime state, not speculative inputs
 
 The plugin accepts injectable activate, deactivate, and update schedules so games can map the runtime into their own state machine or feature pipeline.
@@ -99,61 +107,84 @@ From that it derives:
 - `y`: rotation about body up
 - `z`: rotation about body forward
 
-The fixed-wing model internally maps these to pitch, yaw, and roll damping terms respectively.
+## Control Mapping Layer
 
-## Fixed-Wing Path
+`VehicleControlMap` resolves the user-authored `FlightControlInput` surface into runtime `FlightControlChannels`.
 
-`compute_fixed_wing_dynamics` performs:
+Each channel binding owns:
 
-1. motion sampling in body space
-2. AoA and sideslip extraction
-3. qbar evaluation using current density
-4. lift, drag, side-force, and thrust evaluation
-5. stall hysteresis update and post-stall lift degradation
-6. stability, damping, control, and assist torque composition
-7. ground-effect and landing-gear drag contribution
+- an input source such as `Pitch`, `Throttle`, or `Transition`
+- optional trim coupling
+- scalar gain and offset
+- clamp range
+- slew-up and slew-down rates
+- axis shaping exponent
 
-The model is coefficient-driven enough for sim-lite tuning, but intentionally simpler than a full six-degree-of-freedom study-level FDM.
+This is the layer that makes the crate generic:
 
-## Helicopter Path
+- spacecraft no longer hardcode yaw or collective for translation
+- hybrid VTOL no longer hardcode a special power handoff in the control system
+- alternate games can reuse one model with completely different control semantics
 
-`compute_helicopter_dynamics` uses a separate internal model that resolves:
+## Model Evaluation Layer
 
-1. collective-driven rotor lift
-2. translational-lift gain with forward speed
+`compute_vehicle_dynamics` is now a single system that queries `VehicleModel`, `VehicleActuators`, and `GroundHandling`, then dispatches into the pure evaluators.
+
+### Fixed-wing path
+
+`evaluate_fixed_wing_with_motion` handles:
+
+1. AoA and sideslip extraction
+2. qbar evaluation
+3. lift, drag, side-force, and thrust evaluation
+4. stall hysteresis target generation
+5. control-surface, stability, damping, and assist torques
+6. gear drag and ground-effect scaling
+
+### Rotorcraft path
+
+`evaluate_rotorcraft` handles:
+
+1. lift-channel-driven rotor thrust
+2. translational lift gain
 3. parasite and side drag
-4. cyclic-style pitch and roll torques
-5. yaw torque and anti-torque coupling
-6. hover-leveling and coordinated-turn assist torques
-7. ground effect and contact behavior
+4. torque channels and anti-torque coupling
+5. hover assist torques
+6. ground-effect scaling
 
-The helicopter path is intentionally generic. It does not simulate blade-element aerodynamics, vortex ring state, or tail-rotor geometry in detail.
+### Hybrid path
 
-## VTOL Path
+`evaluate_hybrid` combines the fixed-wing and rotorcraft sub-models, but the combination is now expressed by model and actuator config:
 
-`compute_vtol_dynamics` combines the two existing model families rather than inventing a separate physics stack:
+1. `HybridVehicleModel` owns the wingborne blend window
+2. `HybridActuators` owns rotor thrust routing from hover axis to cruise axis
+3. control-channel mapping decides whether forward and vertical thrust stay coupled or separate
+4. the evaluator blends fixed-wing lift or torque with rotorcraft lift or torque using the resolved transition channel
 
-1. the fixed-wing sub-model provides wing-borne lift, drag, sideslip, and stall behavior
-2. the rotorcraft sub-model provides hover lift, low-speed drag, and hover-style control torques
-3. `FlightControlInput::vtol_transition` is smoothed into a resolved transition state
-4. rotor thrust is tilted from body-up toward body-forward as transition increases
-5. wing-borne lift and airplane-style torques blend in over the configured transition window
+### Spacecraft path
 
-That makes the VTOL model intentionally game-ready rather than study-level. It is aimed at tiltrotor transports and arcade cockpit demos, not full prop-rotor certification-grade simulation.
+`evaluate_spacecraft` provides a pure 6-DOF thruster model with no atmosphere:
 
-## Spacecraft Path
+1. forward, lateral, and vertical thrust channels
+2. configurable body-axis translation directions
+3. configurable angular torque authority
+4. configurable angular damping
+5. optional linear drag for arcade game-feel
+6. zero- or nonzero-gravity operation through `FlightBody`
 
-`compute_spacecraft_dynamics` provides a pure 6-DOF thruster model with no atmosphere:
+## Ground Handling Layer
 
-1. main thrust along the body forward axis, scaled by throttle
-2. RCS translation from yaw and collective inputs
-3. configurable angular torque authority for pitch, roll, and yaw
-4. configurable angular damping for rate stabilization
-5. optional linear drag coefficient for arcade game-feel (0.0 = pure Newtonian)
-6. configurable gravity (can be zeroed for space environments)
-7. assist torques for wings-leveling and hover-leveling when configured
+`GroundHandling` replaces family-specific contact branching.
 
-The spacecraft path filters entities that have `SpacecraftConfig` but no `FixedWingAircraft`, `HelicopterAircraft`, or `VtolAircraft`, ensuring only one dynamics system runs per entity.
+It owns:
+
+- whether contact is enabled at all
+- `ContactGeometry`
+- longitudinal damping
+- lateral damping
+- angular damping
+
+Every vehicle family uses the same contact resolver. Different rollout or skid behavior now comes from per-vehicle config, not from hardcoded `"fixed-wing vs VTOL"` rules inside the system.
 
 ## Integration Boundary
 
@@ -173,25 +204,14 @@ If a project wants an external physics backend, the intended boundary is:
 
 That keeps the reusable atmosphere and flight-model code independent from Avian, Rapier, or project-specific gameplay crates.
 
-## Contact And Ground Effect
-
-`ContactGeometry` provides a minimal runway or skid-contact model shared by fixed-wing, helicopter, and VTOL aircraft:
-
-- optional retractable gear scaling of contact offset
-- vertical clamp against `FlightEnvironment::surface_altitude_msl_m`
-- vertical velocity cancellation when penetrating the surface
-- configurable horizontal and angular damping while in contact
-- low-altitude ground-effect lift multiplier
-
-This is intentionally simple and deterministic. It is good enough for examples, labs, AI traffic, and sim-lite gameplay, but not a full tire or suspension model.
-
 ## Debug Surface
 
 The crate publishes its debug and instrumentation surface through normal ECS state:
 
+- `FlightControlChannels` for resolved command inspection
 - `FlightAeroState` for atmosphere, qbar, AoA, sideslip, and air-relative velocity
-- `FlightForces` for lift, drag, thrust, gravity, and control/damping/assist torque breakdown
-- `FlightTelemetry` for instrument-style UI consumption, including world-frame climb or descent rate
+- `FlightForces` for lift, drag, thrust, gravity, and torque breakdown
+- `FlightTelemetry` for instrument-style UI consumption
 - `StallState` and `LandingGearState` for state transitions
 - messages for stall and gear changes
 
@@ -201,7 +221,7 @@ The examples and lab deliberately expose these values in overlays and gizmo arro
 
 The crate verifies the pure and Bevy-facing layers separately:
 
-- pure unit tests for US Standard Atmosphere sampling and model math
-- Bevy integration tests for plugin wiring, system ordering, state updates, and message emission
-- focused examples for fixed-wing, helicopter, stall, wind, and telemetry use cases
-- a crate-local lab with E2E scenarios for fixed-wing takeoff, stall recovery, and helicopter hover or translation
+- pure unit tests for atmosphere sampling and model math
+- Bevy integration tests for plugin wiring, generic control resolution, state updates, and message emission
+- example workspace presets that exercise the public generic surface
+- a crate-local lab with E2E scenarios for fixed-wing climb, stall recovery, rotorcraft hover, and hybrid transition

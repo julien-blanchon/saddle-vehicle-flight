@@ -1,6 +1,6 @@
 use crate::{
     components::{FlightBody, FlightKinematics, LandingGearState},
-    config::{FixedWingAircraft, HelicopterAircraft, SpacecraftConfig, VtolAircraft},
+    config::GroundHandling,
     math::sanitize_vec3,
     telemetry::FlightForces,
 };
@@ -54,41 +54,27 @@ pub(crate) fn resolve_ground_contact(
         &mut Transform,
         &mut FlightKinematics,
         &mut LandingGearState,
-        Option<&FixedWingAircraft>,
-        Option<&HelicopterAircraft>,
-        Option<&VtolAircraft>,
-        Option<&SpacecraftConfig>,
+        Option<&GroundHandling>,
         &crate::components::FlightEnvironment,
     )>,
 ) {
     let dt = time.delta_secs();
-    for (
-        mut transform,
-        mut kinematics,
-        mut gear,
-        fixed_wing,
-        helicopter,
-        vtol,
-        _spacecraft,
-        environment,
-    ) in &mut query
-    {
+    for (mut transform, mut kinematics, mut gear, ground, environment) in &mut query {
+        let Some(ground) = ground else {
+            gear.contact = false;
+            continue;
+        };
+        if !ground.enabled {
+            gear.contact = false;
+            continue;
+        }
+
         let Some(surface_altitude) = environment.surface_altitude_msl_m else {
             gear.contact = false;
             continue;
         };
-        let contact = if let Some(aircraft) = fixed_wing {
-            aircraft.landing_contact
-        } else if let Some(aircraft) = helicopter {
-            aircraft.contact_geometry
-        } else if let Some(aircraft) = vtol {
-            aircraft.contact_geometry
-        } else {
-            gear.contact = false;
-            continue;
-        };
 
-        let contact_offset = contact.effective_offset_m(gear.position);
+        let contact_offset = ground.contact_geometry.effective_offset_m(gear.position);
         let lowest_point = transform.translation.y - contact_offset;
         if lowest_point <= surface_altitude {
             gear.contact = true;
@@ -96,31 +82,28 @@ pub(crate) fn resolve_ground_contact(
             if kinematics.linear_velocity_world_mps.y < 0.0 {
                 kinematics.linear_velocity_world_mps.y = 0.0;
             }
-            let horizontal_damping =
-                (1.0 - contact.surface_damping_per_second * dt).clamp(0.0, 1.0);
-            if fixed_wing.is_some() || vtol.is_some() {
-                let body_forward = Vec3::new(transform.forward().x, 0.0, transform.forward().z)
-                    .normalize_or_zero();
-                let body_right =
-                    Vec3::new(transform.right().x, 0.0, transform.right().z).normalize_or_zero();
-                let horizontal_velocity = Vec3::new(
-                    kinematics.linear_velocity_world_mps.x,
-                    0.0,
-                    kinematics.linear_velocity_world_mps.z,
-                );
-                let forward_speed = horizontal_velocity.dot(body_forward);
-                let side_speed = horizontal_velocity.dot(body_right);
-                let forward_damping =
-                    (1.0 - contact.surface_damping_per_second * 0.1 * dt).clamp(0.0, 1.0);
-                let resolved_horizontal = body_forward * (forward_speed * forward_damping)
-                    + body_right * (side_speed * horizontal_damping);
-                kinematics.linear_velocity_world_mps.x = resolved_horizontal.x;
-                kinematics.linear_velocity_world_mps.z = resolved_horizontal.z;
-            } else {
-                kinematics.linear_velocity_world_mps.x *= horizontal_damping;
-                kinematics.linear_velocity_world_mps.z *= horizontal_damping;
-            }
-            kinematics.angular_velocity_body_rps *= horizontal_damping;
+
+            let body_forward =
+                Vec3::new(transform.forward().x, 0.0, transform.forward().z).normalize_or_zero();
+            let body_right =
+                Vec3::new(transform.right().x, 0.0, transform.right().z).normalize_or_zero();
+            let horizontal_velocity = Vec3::new(
+                kinematics.linear_velocity_world_mps.x,
+                0.0,
+                kinematics.linear_velocity_world_mps.z,
+            );
+            let forward_speed = horizontal_velocity.dot(body_forward);
+            let side_speed = horizontal_velocity.dot(body_right);
+
+            let longitudinal_damping =
+                (1.0 - ground.longitudinal_damping_per_second * dt).clamp(0.0, 1.0);
+            let lateral_damping = (1.0 - ground.lateral_damping_per_second * dt).clamp(0.0, 1.0);
+            let angular_damping = (1.0 - ground.angular_damping_per_second * dt).clamp(0.0, 1.0);
+            let resolved_horizontal = body_forward * (forward_speed * longitudinal_damping)
+                + body_right * (side_speed * lateral_damping);
+            kinematics.linear_velocity_world_mps.x = resolved_horizontal.x;
+            kinematics.linear_velocity_world_mps.z = resolved_horizontal.z;
+            kinematics.angular_velocity_body_rps *= angular_damping;
         } else {
             gear.contact = false;
         }

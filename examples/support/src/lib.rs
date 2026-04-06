@@ -12,9 +12,11 @@ use saddle_camera_third_person_camera::{
 };
 use saddle_pane::prelude::*;
 use saddle_vehicle_flight::{
-    FixedWingAircraft, FlightAeroState, FlightAssist, FlightControlInput, FlightEnvironment,
-    FlightForces, FlightPlugin, FlightTelemetry, HelicopterAircraft, SpacecraftConfig,
-    VtolAircraft,
+    ControlInputSource, FlightAeroState, FlightAssist, FlightControlInput, FlightEnvironment,
+    FlightForces, FlightPlugin, FlightTelemetry, VehicleControlMap,
+};
+use saddle_vehicle_flight_example_presets::{
+    fixed_wing_trainer, rotorcraft_utility, tiltrotor_transport,
 };
 
 #[derive(Resource, Clone, Pane)]
@@ -306,15 +308,15 @@ pub fn spawn_fixed_wing_demo(
     throttle: f32,
     pilot_controlled: bool,
 ) -> Entity {
+    let preset = fixed_wing_trainer();
     let mut entity = commands.spawn((
         Name::new(name.to_string()),
-        FixedWingAircraft::trainer(),
-        FixedWingAircraft::trainer_body(),
-        saddle_vehicle_flight::FlightAssist {
-            wings_leveling: 0.22,
-            coordinated_turn: 0.18,
-            ..default()
-        },
+        preset.model,
+        preset.actuators,
+        preset.control_map,
+        preset.ground_handling,
+        preset.body,
+        preset.assist,
         saddle_vehicle_flight::FlightKinematics {
             linear_velocity_world_mps: initial_velocity_world_mps,
             ..default()
@@ -400,15 +402,15 @@ pub fn spawn_helicopter_demo(
     collective: f32,
     pilot_controlled: bool,
 ) -> Entity {
+    let preset = rotorcraft_utility();
     let mut entity = commands.spawn((
         Name::new(name.to_string()),
-        HelicopterAircraft::utility(),
-        HelicopterAircraft::utility_body(),
-        saddle_vehicle_flight::FlightAssist {
-            hover_leveling: 0.50,
-            coordinated_turn: 0.12,
-            ..default()
-        },
+        preset.model,
+        preset.actuators,
+        preset.control_map,
+        preset.ground_handling,
+        preset.body,
+        preset.assist,
         saddle_vehicle_flight::FlightKinematics {
             linear_velocity_world_mps: initial_velocity_world_mps,
             ..default()
@@ -495,15 +497,15 @@ pub fn spawn_vtol_demo(
     transition: f32,
     pilot_controlled: bool,
 ) -> Entity {
+    let preset = tiltrotor_transport();
     let mut entity = commands.spawn((
         Name::new(name.to_string()),
-        VtolAircraft::tiltrotor_transport(),
-        VtolAircraft::tiltrotor_transport_body(),
-        saddle_vehicle_flight::FlightAssist {
-            wings_leveling: 0.18,
-            coordinated_turn: 0.16,
-            hover_leveling: 0.44,
-        },
+        preset.model,
+        preset.actuators,
+        preset.control_map,
+        preset.ground_handling,
+        preset.body,
+        preset.assist,
         saddle_vehicle_flight::FlightKinematics {
             linear_velocity_world_mps: initial_velocity_world_mps,
             ..default()
@@ -732,7 +734,7 @@ pub fn update_single_overlay(
     text: &mut Text,
 ) {
     text.0 = format!(
-        "{title}\n{label}\n\nTAS {:>6.1} m/s  IAS {:>6.1}\nAlt {:>6.1} m  AGL {:>6.1?}\nV/S {:>6.1}  AoA {:>6.1} deg\nSlip {:>6.1} deg  q {:>7.1} Pa\nThrottle {:>4.2}  Collective {:>4.2}  VTOL {:>4.2}\nGear {:>4.2} {}  Stalled {}\n\nControls:\n  Arrow keys: pitch/roll\n  Q/E: yaw\n  [ / ]: throttle or collective\n  , / .: VTOL transition\n  G: toggle gear\n  Mouse: orbit camera\n  Scroll: zoom",
+        "{title}\n{label}\n\nTAS {:>6.1} m/s  IAS {:>6.1}\nAlt {:>6.1} m  AGL {:>6.1?}\nV/S {:>6.1}  AoA {:>6.1} deg\nSlip {:>6.1} deg  q {:>7.1} Pa\nFwd {:>4.2}  Vert {:>4.2}  Lat {:>4.2}  VTOL {:>4.2}\nGear {:>4.2} {}  Stalled {}\n\nControls:\n  Arrow keys: pitch/roll\n  Q/E: yaw\n  [ / ]: mapped power channels\n  , / .: mapped transition channel\n  G: toggle gear\n  Mouse: orbit camera\n  Scroll: zoom",
         telemetry.true_airspeed_mps,
         telemetry.indicated_airspeed_mps,
         telemetry.altitude_msl_m,
@@ -741,8 +743,9 @@ pub fn update_single_overlay(
         telemetry.angle_of_attack_deg,
         telemetry.sideslip_deg,
         aero.dynamic_pressure_pa,
-        telemetry.throttle,
-        telemetry.collective,
+        telemetry.forward_thrust,
+        telemetry.vertical_thrust,
+        telemetry.lateral_thrust,
         telemetry.vtol_transition,
         telemetry.gear_position,
         if telemetry.gear_deployed {
@@ -871,41 +874,32 @@ fn clear_yaw_on_complete(
 fn adjust_power(
     trigger: On<Fire<PowerAdjustAction>>,
     time: Res<Time>,
-    mut query: Query<
-        (
-            &mut FlightControlInput,
-            Option<&FixedWingAircraft>,
-            Option<&HelicopterAircraft>,
-            Option<&SpacecraftConfig>,
-        ),
-        With<ExamplePilot>,
-    >,
+    mut query: Query<(&mut FlightControlInput, &VehicleControlMap), With<ExamplePilot>>,
 ) {
-    let Ok((mut input, fixed_wing, helicopter, spacecraft)) = query.get_mut(trigger.context) else {
+    let Ok((mut input, control_map)) = query.get_mut(trigger.context) else {
         return;
     };
     let delta = trigger.value * time.delta_secs() * 0.6;
-    if fixed_wing.is_some() || spacecraft.is_some() {
+    let mut changed = false;
+    changed |= apply_delta_to_source(&mut input, control_map.forward_thrust.source, delta);
+    changed |= apply_delta_to_source(&mut input, control_map.vertical_thrust.source, delta);
+    if !changed {
         input.throttle = (input.throttle + delta).clamp(0.0, 1.0);
-    }
-    if helicopter.is_some() {
-        input.collective = (input.collective + delta).clamp(0.0, 1.0);
-    }
-    if fixed_wing.is_none() && helicopter.is_none() && spacecraft.is_none() {
-        input.throttle = (input.throttle + delta).clamp(0.0, 1.0);
-        input.collective = (input.collective + delta).clamp(0.0, 1.0);
     }
 }
 
 fn adjust_transition(
     trigger: On<Fire<TransitionAdjustAction>>,
     time: Res<Time>,
-    mut query: Query<(&mut FlightControlInput, Option<&VtolAircraft>), With<ExamplePilot>>,
+    mut query: Query<(&mut FlightControlInput, &VehicleControlMap), With<ExamplePilot>>,
 ) {
-    let Ok((mut input, vtol)) = query.get_mut(trigger.context) else {
+    let Ok((mut input, control_map)) = query.get_mut(trigger.context) else {
         return;
     };
-    if vtol.is_none() {
+    if !matches!(
+        control_map.transition.source,
+        ControlInputSource::Transition
+    ) {
         return;
     }
 
@@ -933,4 +927,13 @@ fn spin_rotors(time: Res<Time>, mut query: Query<(&RotorDisk, &mut Transform)>) 
     for (rotor, mut transform) in &mut query {
         transform.rotate_y(rotor.speed_rps * std::f32::consts::TAU * time.delta_secs());
     }
+}
+
+fn apply_delta_to_source(
+    input: &mut FlightControlInput,
+    source: ControlInputSource,
+    delta: f32,
+) -> bool {
+    let current = source.sample(*input);
+    source.write(input, current + delta)
 }

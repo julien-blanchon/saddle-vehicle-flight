@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "presets",
     "support",
     "basic_fixed_wing",
     "helicopter_hover",
@@ -21,6 +22,7 @@ bevy_ui_widgets = "0.18"
 saddle-pane = { git = "https://github.com/julien-blanchon/saddle-pane" }
 saddle-camera-third-person-camera = { git = "https://github.com/julien-blanchon/saddle-camera-third-person-camera" }
 saddle-vehicle-flight = { path = ".." }
+saddle-vehicle-flight-example-presets = { path = "presets" }
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"

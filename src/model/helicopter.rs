@@ -1,9 +1,12 @@
 use crate::{
     atmosphere::dynamic_pressure,
-    components::{FlightAssist, FlightBody, FlightControlInput, LandingGearState},
-    config::HelicopterAircraft,
+    components::{
+        FlightAssist, FlightBody, FlightControlChannels, FlightControlInput, LandingGearState,
+    },
+    config::{GroundHandling, RotorcraftActuators, RotorcraftModel},
     model::common::{
-        AIRSPEED_EPSILON_MPS, EvaluatedFlight, beta_from_motion, ground_effect_multiplier,
+        AIRSPEED_EPSILON_MPS, EvaluatedFlight, axis_world, beta_from_motion,
+        ground_effect_multiplier,
     },
     telemetry::{FlightAeroState, FlightForces},
 };
@@ -11,63 +14,70 @@ use bevy::prelude::*;
 
 use super::common::MotionSample;
 
-pub(crate) fn evaluate_helicopter(
+pub(crate) fn evaluate_rotorcraft(
     motion: MotionSample,
     transform: &Transform,
     body: FlightBody,
-    aircraft: HelicopterAircraft,
-    controls: crate::components::ResolvedFlightControls,
+    model: RotorcraftModel,
+    actuators: RotorcraftActuators,
+    controls: FlightControlChannels,
     control_input: FlightControlInput,
     assist: FlightAssist,
     current_aero: FlightAeroState,
     gear: LandingGearState,
+    ground: Option<GroundHandling>,
 ) -> EvaluatedFlight {
-    let collective =
-        (controls.collective + control_input.pitch_trim * 0.0 + control_input.roll_trim * 0.0)
-            .clamp(0.0, 1.0);
+    let vertical_thrust = controls.vertical_thrust.clamp(0.0, 1.0);
     let pitch_cmd =
-        (controls.pitch + control_input.pitch_trim * aircraft.trim_authority.y).clamp(-1.0, 1.0);
+        (controls.pitch + control_input.pitch_trim * actuators.trim_authority.y).clamp(-1.0, 1.0);
     let roll_cmd =
-        (controls.roll + control_input.roll_trim * aircraft.trim_authority.z).clamp(-1.0, 1.0);
+        (controls.roll + control_input.roll_trim * actuators.trim_authority.z).clamp(-1.0, 1.0);
     let yaw_cmd =
-        (controls.yaw + control_input.yaw_trim * aircraft.trim_authority.x).clamp(-1.0, 1.0);
+        (controls.yaw + control_input.yaw_trim * actuators.trim_authority.x).clamp(-1.0, 1.0);
 
     let translational_lift = if motion.airspeed_mps <= AIRSPEED_EPSILON_MPS {
         0.0
     } else {
-        (motion.airspeed_mps / aircraft.translational_lift_full_speed_mps).clamp(0.0, 1.0)
-            * aircraft.translational_lift_gain
+        (motion.airspeed_mps / model.translational_lift_full_speed_mps).clamp(0.0, 1.0)
+            * model.translational_lift_gain
     };
-    let ground_effect = ground_effect_multiplier(
-        current_aero.altitude_agl_m,
-        aircraft.contact_geometry.ground_effect_height_m,
-        aircraft.contact_geometry.ground_effect_boost,
-    );
+    let ground_effect = ground
+        .filter(|ground| ground.enabled)
+        .map(|ground| {
+            ground_effect_multiplier(
+                current_aero.altitude_agl_m,
+                ground.contact_geometry.ground_effect_height_m,
+                ground.contact_geometry.ground_effect_boost,
+            )
+        })
+        .unwrap_or(1.0);
     let qbar = dynamic_pressure(
         current_aero.atmosphere.density_kg_per_m3,
         motion.airspeed_mps.max(0.0),
     );
     let lift_force_mag =
-        collective * aircraft.max_main_lift_newtons * (1.0 + translational_lift) * ground_effect;
-    let parasite_drag_mag = qbar * aircraft.rotor_disc_area_m2 * aircraft.parasite_drag_coefficient;
+        vertical_thrust * actuators.max_lift_newtons * (1.0 + translational_lift) * ground_effect;
+    let parasite_drag_mag = qbar * model.rotor_disc_area_m2 * model.parasite_drag_coefficient;
     let side_drag_mag = motion.side_speed_mps.abs()
         * current_aero.atmosphere.density_kg_per_m3
-        * aircraft.side_drag_coefficient
-        * aircraft.rotor_disc_area_m2;
+        * model.side_drag_coefficient
+        * model.rotor_disc_area_m2;
 
-    let thrust_world = motion.up_world * lift_force_mag;
+    let thrust_world =
+        axis_world(transform, actuators.lift_axis_local, motion.up_world) * lift_force_mag;
     let drag_world = -motion.air_direction_world * parasite_drag_mag;
     let side_world = -motion.right_world * motion.side_speed_mps.signum() * side_drag_mag;
     let gravity_world = Vec3::NEG_Y * body.mass_kg * body.gravity_acceleration_mps2;
     let total_force_world_newtons = thrust_world + drag_world + side_world + gravity_world;
 
     let control_torque_body_nm = Vec3::new(
-        -pitch_cmd * aircraft.pitch_torque_authority,
-        yaw_cmd * aircraft.yaw_torque_authority - collective * aircraft.anti_torque_per_collective,
-        -roll_cmd * aircraft.roll_torque_authority,
+        -pitch_cmd * actuators.pitch_torque_authority,
+        yaw_cmd * actuators.yaw_torque_authority
+            - vertical_thrust * actuators.anti_torque_per_vertical_thrust,
+        -roll_cmd * actuators.roll_torque_authority,
     );
     let damping_torque_body_nm =
-        -motion.angular_velocity_body_rps * aircraft.angular_damping * 2_000.0;
+        -motion.angular_velocity_body_rps * model.angular_damping * 2_000.0;
     let assist_torque_body_nm = Vec3::new(
         -motion.forward_world.y * assist.hover_leveling * 2_200.0,
         -beta_from_motion(motion) * assist.coordinated_turn * 1_100.0,

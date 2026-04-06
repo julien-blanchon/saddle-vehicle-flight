@@ -96,9 +96,9 @@ Patterns:
 
 Start with:
 
-- `max_main_lift_newtons`
+- `RotorcraftActuators::max_lift_newtons`
 - `FlightBody::mass_kg`
-- `power_response.collective_*`
+- `VehicleControlMap::vertical_thrust.response`
 
 At a neutral hover test, the helicopter should hold altitude with collective somewhere near the middle of the range instead of requiring either `0.1` or `0.95`.
 
@@ -115,8 +115,8 @@ If the helicopter feels glued in place and never benefits from forward motion, i
 
 Relevant knobs:
 
-- `yaw_torque_authority`
-- `anti_torque_per_collective`
+- `RotorcraftActuators::yaw_torque_authority`
+- `RotorcraftActuators::anti_torque_per_vertical_thrust`
 
 If the helicopter yaws uncontrollably upward under collective, anti-torque is too strong relative to pedal authority. If collective changes feel completely disconnected from yaw workload, anti-torque is too weak.
 
@@ -126,12 +126,12 @@ If the helicopter yaws uncontrollably upward under collective, anti-torque is to
 
 ## Response Curves And Trim
 
-`FlightControlResponse` shapes how quickly the runtime chases the requested input. It does not directly change the aerodynamic or rotor authority.
+`VehicleControlMap` shapes how quickly the runtime chases the requested input. The `ControlChannelBinding::response` on each channel does not directly change aerodynamic or rotor authority; it only changes how fast the runtime reaches the configured actuator demand.
 
 Recommended pattern:
 
-- use `*_rate_per_second` for feel and spool-up
-- use aircraft authority fields for actual force or torque power
+- use `ChannelResponse::{rise_per_second, fall_per_second}` for feel and spool-up
+- use model or actuator authority fields for actual force or torque power
 - use exponents above `1.0` to make center-stick motion calmer without losing full-range authority
 
 Trim is best kept small. Large trim values are usually a sign that the aircraft or center-of-mass assumptions need retuning instead.
@@ -148,14 +148,14 @@ Tune aircraft in still air first. Then introduce wind. Otherwise crosswind compe
 
 ## Contact And Ground Effect
 
-`ContactGeometry` controls the simple runway or skid-contact model.
+`GroundHandling` controls the simple runway or skid-contact model.
 
 Checklist:
 
-- If the aircraft visibly sinks into the runway, increase `contact_offset_below_origin_m`.
-- If touchdown slides forever, increase `surface_damping_per_second`.
-- If flare or hover near the ground feels flat, increase `ground_effect_boost`.
-- If ground effect feels like a trampoline, reduce `ground_effect_boost` or lower `ground_effect_height_m`.
+- If the aircraft visibly sinks into the runway, increase `contact_geometry.contact_offset_below_origin_m`.
+- If touchdown slides forever, increase `longitudinal_damping_per_second` or `lateral_damping_per_second`.
+- If flare or hover near the ground feels flat, increase `contact_geometry.ground_effect_boost`.
+- If ground effect feels like a trampoline, reduce `contact_geometry.ground_effect_boost` or lower `contact_geometry.ground_effect_height_m`.
 
 ## Debug Checklist
 
@@ -190,12 +190,12 @@ Typical failure patterns:
 Use the examples and lab as a repeatable tuning harness:
 
 ```bash
-cargo run -p saddle-vehicle-flight --example basic_fixed_wing
-cargo run -p saddle-vehicle-flight --example wind_gusts
-cargo run -p saddle-vehicle-flight --example control_profiles
-cargo run -p saddle-vehicle-flight-lab --features e2e -- flight_fixed_wing_smoke
-cargo run -p saddle-vehicle-flight-lab --features e2e -- flight_stall_recovery
-cargo run -p saddle-vehicle-flight-lab --features e2e -- flight_helicopter_hover
+cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-example-basic-fixed-wing
+cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-example-wind-gusts
+cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-example-control-profiles
+cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-lab --features e2e -- flight_fixed_wing_smoke
+cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-lab --features e2e -- flight_stall_recovery
+cargo run --manifest-path examples/Cargo.toml -p saddle-vehicle-flight-lab --features e2e -- flight_helicopter_hover
 ```
 
 When visual behavior matters, keep the E2E screenshots and BRP force inspection in the loop instead of tuning from numeric values alone.

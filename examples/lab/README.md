@@ -4,7 +4,7 @@ Crate-local standalone lab app for validating the shared `saddle-vehicle-flight`
 
 ## Purpose
 
-- verify fixed-wing and helicopter runtime behavior in one scene
+- verify fixed-wing, rotorcraft, and hybrid VTOL runtime behavior in one scene
 - expose telemetry, force vectors, and active-aircraft switching for BRP and E2E inspection
 - provide deterministic screenshot gates for takeoff, stall recovery, and hover or translation
 
@@ -24,6 +24,7 @@ cargo run -p saddle-vehicle-flight-lab
 cargo run -p saddle-vehicle-flight-lab --features e2e -- flight_fixed_wing_smoke
 cargo run -p saddle-vehicle-flight-lab --features e2e -- flight_stall_recovery
 cargo run -p saddle-vehicle-flight-lab --features e2e -- flight_helicopter_hover
+cargo run -p saddle-vehicle-flight-lab --features e2e -- flight_vtol_transition
 ```
 
 ## BRP
@@ -37,6 +38,6 @@ uv run --project .codex/skills/bevy-brp/script brp extras shutdown
 
 ## Notes
 
-- The lab keeps both a fixed-wing aircraft and a helicopter alive at once so BRP can inspect stable named entities.
-- Pilot input and the `1` or `2` active-aircraft switch both run through `bevy_enhanced_input`.
+- The lab keeps a fixed-wing aircraft, a helicopter, and a hybrid VTOL alive at once so BRP can inspect stable named entities.
+- Pilot input and the `1`, `2`, or `3` active-aircraft switch all run through `bevy_enhanced_input`.
 - The overlay is intentionally dense so screenshot artifacts and BRP state queries can be cross-checked against the same runtime values.

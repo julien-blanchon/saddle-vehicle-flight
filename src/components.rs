@@ -118,13 +118,15 @@ pub struct StallState {
     pub amount: f32,
 }
 
-#[derive(Component, Debug, Clone, Copy, Default)]
-pub(crate) struct ResolvedFlightControls {
+#[derive(Component, Reflect, Debug, Clone, Copy, Default)]
+#[reflect(Component, Debug)]
+pub struct FlightControlChannels {
     pub pitch: f32,
     pub roll: f32,
     pub yaw: f32,
-    pub throttle: f32,
-    pub collective: f32,
+    pub forward_thrust: f32,
+    pub vertical_thrust: f32,
+    pub lateral_thrust: f32,
     pub transition: f32,
     pub gear_toggle_latched: bool,
 }

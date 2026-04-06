@@ -1,0 +1,9 @@
+[package]
+name = "saddle-vehicle-flight-example-presets"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+bevy = "0.18"
+saddle-vehicle-flight = { path = "../.." }

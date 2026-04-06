@@ -4,9 +4,13 @@ use bevy::time::TimeUpdateStrategy;
 use std::time::Duration;
 
 use crate::{
-    FixedWingAircraft, FlightAssist, FlightBody, FlightControlInput, FlightEnvironment,
-    FlightForces, FlightKinematics, FlightPlugin, FlightTelemetry, GearStateChanged,
-    HelicopterAircraft, StallEntered,
+    FlightAssist, FlightBody, FlightControlInput, FlightEnvironment, FlightForces,
+    FlightKinematics, FlightPlugin, FlightTelemetry, GearStateChanged, StallEntered,
+    config::{
+        ChannelResponse, ContactGeometry, ControlChannelBinding, ControlInputSource,
+        FixedWingActuators, FixedWingModel, GroundHandling, RotorcraftActuators, RotorcraftModel,
+        TrimInputSource, VehicleActuators, VehicleControlMap, VehicleModel,
+    },
 };
 
 #[derive(ScheduleLabel, Debug, Clone, PartialEq, Eq, Hash)]
@@ -23,12 +27,213 @@ fn test_app() -> App {
     app
 }
 
+fn fixed_wing_trainer_setup() -> (
+    VehicleModel,
+    VehicleActuators,
+    VehicleControlMap,
+    GroundHandling,
+    FlightBody,
+    FlightAssist,
+) {
+    (
+        VehicleModel::fixed_wing(FixedWingModel::default()),
+        VehicleActuators::fixed_wing(FixedWingActuators::default()),
+        VehicleControlMap {
+            pitch: ControlChannelBinding {
+                source: ControlInputSource::Pitch,
+                trim: Some(TrimInputSource::Pitch),
+                trim_scale: 1.0,
+                response: ChannelResponse {
+                    rise_per_second: 5.0,
+                    fall_per_second: 5.0,
+                    exponent: 1.25,
+                },
+                ..default()
+            },
+            roll: ControlChannelBinding {
+                source: ControlInputSource::Roll,
+                trim: Some(TrimInputSource::Roll),
+                trim_scale: 1.0,
+                response: ChannelResponse {
+                    rise_per_second: 6.0,
+                    fall_per_second: 6.0,
+                    exponent: 1.15,
+                },
+                ..default()
+            },
+            yaw: ControlChannelBinding {
+                source: ControlInputSource::Yaw,
+                trim: Some(TrimInputSource::Yaw),
+                trim_scale: 1.0,
+                response: ChannelResponse {
+                    rise_per_second: 4.0,
+                    fall_per_second: 4.0,
+                    exponent: 1.0,
+                },
+                ..default()
+            },
+            forward_thrust: ControlChannelBinding {
+                source: ControlInputSource::Throttle,
+                clamp_min: 0.0,
+                clamp_max: 1.0,
+                response: ChannelResponse {
+                    rise_per_second: 0.65,
+                    fall_per_second: 1.0,
+                    exponent: 1.0,
+                },
+                ..default()
+            },
+            ..default()
+        },
+        GroundHandling {
+            enabled: true,
+            contact_geometry: ContactGeometry {
+                contact_offset_below_origin_m: 1.15,
+                retractable: true,
+                extension_rate_per_second: 0.75,
+                ground_effect_height_m: 5.0,
+                ground_effect_boost: 0.15,
+            },
+            longitudinal_damping_per_second: 0.14,
+            lateral_damping_per_second: 1.4,
+            angular_damping_per_second: 1.4,
+        },
+        FlightBody::new(980.0, Vec3::new(900.0, 1_450.0, 1_700.0)),
+        FlightAssist {
+            wings_leveling: 0.22,
+            coordinated_turn: 0.18,
+            ..default()
+        },
+    )
+}
+
+fn rotorcraft_utility_setup() -> (
+    VehicleModel,
+    VehicleActuators,
+    VehicleControlMap,
+    GroundHandling,
+    FlightBody,
+    FlightAssist,
+) {
+    (
+        VehicleModel::rotorcraft(RotorcraftModel::default()),
+        VehicleActuators::rotorcraft(RotorcraftActuators::default()),
+        VehicleControlMap {
+            pitch: ControlChannelBinding {
+                source: ControlInputSource::Pitch,
+                trim: Some(TrimInputSource::Pitch),
+                trim_scale: 1.0,
+                response: ChannelResponse {
+                    rise_per_second: 6.0,
+                    fall_per_second: 6.0,
+                    exponent: 1.25,
+                },
+                ..default()
+            },
+            roll: ControlChannelBinding {
+                source: ControlInputSource::Roll,
+                trim: Some(TrimInputSource::Roll),
+                trim_scale: 1.0,
+                response: ChannelResponse {
+                    rise_per_second: 6.5,
+                    fall_per_second: 6.5,
+                    exponent: 1.15,
+                },
+                ..default()
+            },
+            yaw: ControlChannelBinding {
+                source: ControlInputSource::Yaw,
+                trim: Some(TrimInputSource::Yaw),
+                trim_scale: 1.0,
+                response: ChannelResponse {
+                    rise_per_second: 5.0,
+                    fall_per_second: 5.0,
+                    exponent: 1.0,
+                },
+                ..default()
+            },
+            vertical_thrust: ControlChannelBinding {
+                source: ControlInputSource::Collective,
+                clamp_min: 0.0,
+                clamp_max: 1.0,
+                response: ChannelResponse {
+                    rise_per_second: 1.25,
+                    fall_per_second: 1.45,
+                    exponent: 1.0,
+                },
+                ..default()
+            },
+            ..default()
+        },
+        GroundHandling {
+            enabled: true,
+            contact_geometry: ContactGeometry {
+                contact_offset_below_origin_m: 1.65,
+                retractable: false,
+                extension_rate_per_second: 1.0,
+                ground_effect_height_m: 3.6,
+                ground_effect_boost: 0.18,
+            },
+            longitudinal_damping_per_second: 2.0,
+            lateral_damping_per_second: 2.0,
+            angular_damping_per_second: 2.0,
+        },
+        FlightBody::new(1_150.0, Vec3::new(1_800.0, 1_600.0, 2_100.0)),
+        FlightAssist {
+            hover_leveling: 0.50,
+            coordinated_turn: 0.12,
+            ..default()
+        },
+    )
+}
+
+fn spawn_fixed_wing(
+    app: &mut App,
+    input: FlightControlInput,
+    environment: FlightEnvironment,
+    body_override: Option<FlightBody>,
+    kinematics: FlightKinematics,
+    transform: Transform,
+) {
+    let (model, actuators, control_map, ground_handling, body, assist) = fixed_wing_trainer_setup();
+    app.world_mut().spawn((
+        model,
+        actuators,
+        control_map,
+        ground_handling,
+        body_override.unwrap_or(body),
+        assist,
+        input,
+        environment,
+        kinematics,
+        transform,
+    ));
+}
+
+fn spawn_rotorcraft(
+    app: &mut App,
+    input: FlightControlInput,
+    assist_override: Option<FlightAssist>,
+    transform: Transform,
+) {
+    let (model, actuators, control_map, ground_handling, body, assist) = rotorcraft_utility_setup();
+    app.world_mut().spawn((
+        model,
+        actuators,
+        control_map,
+        ground_handling,
+        body,
+        assist_override.unwrap_or(assist),
+        input,
+        transform,
+    ));
+}
+
 #[test]
 fn telemetry_updates_when_inputs_change() {
     let mut app = test_app();
-    app.world_mut().spawn((
-        FixedWingAircraft::trainer(),
-        FlightBody::new(980.0, Vec3::new(900.0, 1_450.0, 1_700.0)),
+    spawn_fixed_wing(
+        &mut app,
         FlightControlInput {
             throttle: 0.9,
             ..default()
@@ -37,8 +242,10 @@ fn telemetry_updates_when_inputs_change() {
             surface_altitude_msl_m: Some(0.0),
             ..default()
         },
+        None,
+        FlightKinematics::default(),
         Transform::from_xyz(0.0, 5.0, 0.0),
-    ));
+    );
     for _ in 0..120 {
         app.update();
     }
@@ -48,25 +255,28 @@ fn telemetry_updates_when_inputs_change() {
         .query::<&FlightTelemetry>()
         .single(app.world())
         .expect("telemetry should exist");
-    assert!(telemetry.throttle > 0.0);
+    assert!(telemetry.forward_thrust > 0.0);
 }
 
 #[test]
 fn telemetry_vertical_speed_uses_world_frame_climb_rate() {
     let mut app = test_app();
-    app.world_mut().spawn((
-        FixedWingAircraft::trainer(),
-        FlightBody {
+    let (_, _, _, _, body, _) = fixed_wing_trainer_setup();
+    spawn_fixed_wing(
+        &mut app,
+        FlightControlInput::default(),
+        FlightEnvironment::default(),
+        Some(FlightBody {
             use_internal_integration: false,
-            ..FixedWingAircraft::trainer_body()
-        },
+            ..body
+        }),
         FlightKinematics {
             linear_velocity_world_mps: Vec3::new(0.0, 12.0, -28.0),
             ..default()
         },
         Transform::from_xyz(0.0, 40.0, 0.0)
             .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
-    ));
+    );
 
     app.update();
     app.update();
@@ -82,15 +292,17 @@ fn telemetry_vertical_speed_uses_world_frame_climb_rate() {
 #[test]
 fn stall_messages_fire_for_high_alpha() {
     let mut app = test_app();
-    app.world_mut().spawn((
-        FixedWingAircraft::trainer(),
-        FlightBody::new(980.0, Vec3::new(900.0, 1_450.0, 1_700.0)),
+    spawn_fixed_wing(
+        &mut app,
+        FlightControlInput::default(),
+        FlightEnvironment::default(),
+        None,
         FlightKinematics {
             linear_velocity_world_mps: Vec3::new(0.0, -25.0, -18.0),
             ..default()
         },
         Transform::from_xyz(0.0, 150.0, 0.0),
-    ));
+    );
     let mut saw_stall_message = false;
     for _ in 0..120 {
         app.update();
@@ -111,15 +323,17 @@ fn stall_messages_fire_for_high_alpha() {
 #[test]
 fn gear_messages_fire_when_requested_state_changes() {
     let mut app = test_app();
-    app.world_mut().spawn((
-        FixedWingAircraft::trainer(),
-        FlightBody::new(980.0, Vec3::new(900.0, 1_450.0, 1_700.0)),
+    spawn_fixed_wing(
+        &mut app,
         FlightControlInput {
             requested_gear_down: Some(false),
             ..default()
         },
+        FlightEnvironment::default(),
+        None,
+        FlightKinematics::default(),
         Transform::from_xyz(0.0, 50.0, 0.0),
-    ));
+    );
 
     let mut saw_gear_message = false;
     for _ in 0..90 {
@@ -140,24 +354,26 @@ fn gear_messages_fire_when_requested_state_changes() {
 #[test]
 fn fixed_wing_and_helicopter_can_coexist() {
     let mut app = test_app();
-    app.world_mut().spawn((
-        FixedWingAircraft::trainer(),
-        FlightBody::new(980.0, Vec3::new(900.0, 1_450.0, 1_700.0)),
+    spawn_fixed_wing(
+        &mut app,
+        FlightControlInput::default(),
+        FlightEnvironment::default(),
+        None,
+        FlightKinematics::default(),
         Transform::from_xyz(-10.0, 40.0, 0.0),
-    ));
-    app.world_mut().spawn((
-        HelicopterAircraft::utility(),
-        FlightBody::new(1_150.0, Vec3::new(1_800.0, 1_600.0, 2_100.0)),
+    );
+    spawn_rotorcraft(
+        &mut app,
         FlightControlInput {
             collective: 0.65,
             ..default()
         },
-        FlightAssist {
+        Some(FlightAssist {
             hover_leveling: 0.2,
             ..default()
-        },
+        }),
         Transform::from_xyz(10.0, 40.0, 0.0),
-    ));
+    );
     app.update();
     app.update();
 
@@ -172,11 +388,16 @@ fn fixed_wing_and_helicopter_can_coexist() {
 #[test]
 fn fixed_wing_ground_contact_keeps_forward_rollout() {
     let mut app = test_app();
+    let (model, actuators, control_map, ground_handling, body, assist) = fixed_wing_trainer_setup();
     let entity = app
         .world_mut()
         .spawn((
-            FixedWingAircraft::trainer(),
-            FixedWingAircraft::trainer_body(),
+            model,
+            actuators,
+            control_map,
+            ground_handling,
+            body,
+            assist,
             FlightEnvironment {
                 surface_altitude_msl_m: Some(0.0),
                 ..default()

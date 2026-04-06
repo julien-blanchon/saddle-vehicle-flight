@@ -1,7 +1,7 @@
 use saddle_vehicle_flight_example_support as support;
 
 use bevy::prelude::*;
-use saddle_vehicle_flight::{FlightAeroState, FlightTelemetry, VtolAircraft};
+use saddle_vehicle_flight::{FlightAeroState, FlightTelemetry};
 use support::{
     ExamplePilot, configure_example_app_with_follow_camera, draw_force_vectors,
     spawn_lights_and_ground, spawn_overlay, spawn_vtol_demo, update_single_overlay,
@@ -101,7 +101,7 @@ fn spawn_airfield_detail(
 }
 
 fn cockpit_camera(
-    aircraft: Query<&Transform, (With<ExamplePilot>, With<VtolAircraft>)>,
+    aircraft: Query<&Transform, With<ExamplePilot>>,
     mut camera: Query<&mut Transform, (With<CockpitCamera>, Without<ExamplePilot>)>,
 ) {
     let Ok(target) = aircraft.single() else {
@@ -118,10 +118,7 @@ fn cockpit_camera(
 }
 
 fn update_overlay(
-    telemetry: Query<
-        (&FlightTelemetry, &FlightAeroState),
-        (With<ExamplePilot>, With<VtolAircraft>),
-    >,
+    telemetry: Query<(&FlightTelemetry, &FlightAeroState), With<ExamplePilot>>,
     mut overlay: Query<&mut Text, (With<Node>, Without<ExamplePilot>)>,
 ) {
     let Ok((telemetry, aero)) = telemetry.single() else {

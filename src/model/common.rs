@@ -49,6 +49,15 @@ pub(crate) fn sample_motion(
     }
 }
 
+pub(crate) fn axis_world(transform: &Transform, axis_local: Vec3, fallback_world: Vec3) -> Vec3 {
+    let axis_world = transform.rotation * axis_local;
+    if axis_world.length_squared() > 1e-6 {
+        axis_world.normalize()
+    } else {
+        fallback_world
+    }
+}
+
 pub(crate) fn alpha_from_motion(sample: MotionSample) -> f32 {
     -sample
         .body_vertical_speed_mps

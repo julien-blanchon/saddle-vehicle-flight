@@ -1,9 +1,11 @@
 use crate::{
     atmosphere::{SEA_LEVEL_AIR_DENSITY_KG_PER_M3, dynamic_pressure},
-    components::{FlightAssist, FlightBody, FlightControlInput, LandingGearState},
-    config::FixedWingAircraft,
+    components::{
+        FlightAssist, FlightBody, FlightControlChannels, FlightControlInput, LandingGearState,
+    },
+    config::{FixedWingActuators, FixedWingModel, GroundHandling},
     model::common::{
-        AIRSPEED_EPSILON_MPS, EvaluatedFlight, alpha_from_motion, beta_from_motion,
+        AIRSPEED_EPSILON_MPS, EvaluatedFlight, alpha_from_motion, axis_world, beta_from_motion,
         ground_effect_multiplier, lift_direction_world,
     },
     telemetry::{FlightAeroState, FlightForces},
@@ -16,13 +18,15 @@ pub(crate) fn evaluate_fixed_wing_with_motion(
     motion: MotionSample,
     transform: &Transform,
     body: FlightBody,
-    aircraft: FixedWingAircraft,
-    controls: crate::components::ResolvedFlightControls,
+    model: FixedWingModel,
+    actuators: FixedWingActuators,
+    controls: FlightControlChannels,
     control_input: FlightControlInput,
     assist: FlightAssist,
     current_aero: FlightAeroState,
     current_stall_amount: f32,
     gear: LandingGearState,
+    ground: Option<GroundHandling>,
 ) -> EvaluatedFlight {
     let alpha = if motion.airspeed_mps > AIRSPEED_EPSILON_MPS {
         alpha_from_motion(motion)
@@ -38,55 +42,58 @@ pub(crate) fn evaluate_fixed_wing_with_motion(
         current_aero.atmosphere.density_kg_per_m3,
         motion.airspeed_mps.max(0.0),
     );
-    let stall_target = if alpha.abs() >= aircraft.stall_alpha_rad {
+    let stall_target = if alpha.abs() >= model.stall_alpha_rad {
         1.0
-    } else if alpha.abs() <= aircraft.recovery_alpha_rad {
+    } else if alpha.abs() <= model.recovery_alpha_rad {
         0.0
     } else {
         current_stall_amount
     };
     let elevator =
-        (controls.pitch + control_input.pitch_trim * aircraft.trim_authority.y).clamp(-1.0, 1.0);
+        (controls.pitch + control_input.pitch_trim * actuators.trim_authority.y).clamp(-1.0, 1.0);
     let aileron =
-        (controls.roll + control_input.roll_trim * aircraft.trim_authority.z).clamp(-1.0, 1.0);
+        (controls.roll + control_input.roll_trim * actuators.trim_authority.z).clamp(-1.0, 1.0);
     let rudder =
-        (controls.yaw + control_input.yaw_trim * aircraft.trim_authority.x).clamp(-1.0, 1.0);
+        (controls.yaw + control_input.yaw_trim * actuators.trim_authority.x).clamp(-1.0, 1.0);
 
-    let cl_linear = aircraft.cl0
-        + aircraft.lift_curve_slope_per_rad * alpha
-        + aircraft.elevator_authority * elevator;
-    let cl_linear = cl_linear.clamp(
-        -aircraft.max_lift_coefficient,
-        aircraft.max_lift_coefficient,
-    );
-    let cl_stalled = aircraft.post_stall_lift_coefficient * alpha.signum();
+    let cl_linear = model.cl0
+        + model.lift_curve_slope_per_rad * alpha
+        + actuators.elevator_authority * elevator;
+    let cl_linear = cl_linear.clamp(-model.max_lift_coefficient, model.max_lift_coefficient);
+    let cl_stalled = model.post_stall_lift_coefficient * alpha.signum();
     let cl = cl_linear * (1.0 - current_stall_amount) + cl_stalled * current_stall_amount;
 
     let gear_drag = if gear.deployed() {
-        aircraft.gear_drag_coefficient
+        model.gear_drag_coefficient
     } else {
         0.0
     };
-    let cd = aircraft.zero_lift_drag_coefficient
-        + aircraft.induced_drag_factor * cl.powi(2)
-        + aircraft.stall_drag_coefficient * current_stall_amount
+    let cd = model.zero_lift_drag_coefficient
+        + model.induced_drag_factor * cl.powi(2)
+        + model.stall_drag_coefficient * current_stall_amount
         + gear_drag;
-    let cy = (-aircraft.side_force_slope_per_rad * beta) + aircraft.rudder_authority * rudder;
+    let cy = (-model.side_force_slope_per_rad * beta) + actuators.rudder_authority * rudder;
 
-    let ground_effect = ground_effect_multiplier(
-        current_aero.altitude_agl_m,
-        aircraft.landing_contact.ground_effect_height_m,
-        aircraft.landing_contact.ground_effect_boost,
-    );
-    let lift_force_mag = cl * qbar * aircraft.wing_area_m2 * ground_effect;
-    let drag_force_mag = cd * qbar * aircraft.wing_area_m2;
-    let side_force_mag = cy * qbar * aircraft.wing_area_m2;
-    let thrust_force_mag = controls.throttle.max(0.0) * aircraft.max_thrust_newtons;
+    let ground_effect = ground
+        .filter(|ground| ground.enabled)
+        .map(|ground| {
+            ground_effect_multiplier(
+                current_aero.altitude_agl_m,
+                ground.contact_geometry.ground_effect_height_m,
+                ground.contact_geometry.ground_effect_boost,
+            )
+        })
+        .unwrap_or(1.0);
+    let lift_force_mag = cl * qbar * model.wing_area_m2 * ground_effect;
+    let drag_force_mag = cd * qbar * model.wing_area_m2;
+    let side_force_mag = cy * qbar * model.wing_area_m2;
+    let thrust_force_mag = controls.forward_thrust.max(0.0) * actuators.max_forward_thrust_newtons;
 
     let lift_world = lift_direction_world(motion) * lift_force_mag;
     let drag_world = -motion.air_direction_world * drag_force_mag;
     let side_world = -motion.right_world * side_force_mag;
-    let thrust_world = motion.forward_world * thrust_force_mag;
+    let thrust_world =
+        axis_world(transform, actuators.thrust_axis_local, motion.forward_world) * thrust_force_mag;
     let gravity_world = Vec3::NEG_Y * body.mass_kg * body.gravity_acceleration_mps2;
 
     let p = motion.angular_velocity_body_rps.z;
@@ -94,28 +101,28 @@ pub(crate) fn evaluate_fixed_wing_with_motion(
     let r = motion.angular_velocity_body_rps.y;
     let rate_scale = (motion.airspeed_mps / 40.0).clamp(0.0, 3.0);
     let control_torque_body_nm = Vec3::new(
-        -(aircraft.elevator_authority * elevator + aircraft.pitch_stability * alpha)
+        -(actuators.elevator_authority * elevator + model.pitch_stability * alpha)
             * qbar
-            * aircraft.wing_area_m2
-            * aircraft.mean_chord_m,
-        (aircraft.rudder_authority * rudder - aircraft.yaw_stability * beta)
+            * model.wing_area_m2
+            * model.mean_chord_m,
+        (actuators.rudder_authority * rudder - model.yaw_stability * beta)
             * qbar
-            * aircraft.wing_area_m2
-            * aircraft.wingspan_m,
-        -(aircraft.aileron_authority * aileron + aircraft.roll_stability * beta)
+            * model.wing_area_m2
+            * model.wingspan_m,
+        -(actuators.aileron_authority * aileron + model.roll_stability * beta)
             * qbar
-            * aircraft.wing_area_m2
-            * aircraft.wingspan_m,
+            * model.wing_area_m2
+            * model.wingspan_m,
     );
     let damping_torque_body_nm = Vec3::new(
-        -aircraft.pitch_rate_damping * q * rate_scale,
-        -aircraft.yaw_rate_damping * r * rate_scale,
-        -aircraft.roll_rate_damping * p * rate_scale,
+        -model.pitch_rate_damping * q * rate_scale,
+        -model.yaw_rate_damping * r * rate_scale,
+        -model.roll_rate_damping * p * rate_scale,
     ) * qbar.max(1.0);
     let assist_torque_body_nm = Vec3::new(
-        -motion.forward_world.y * assist.wings_leveling * qbar * aircraft.mean_chord_m,
-        -beta * assist.coordinated_turn * qbar * aircraft.wingspan_m,
-        motion.right_world.y * assist.wings_leveling * qbar * aircraft.wingspan_m,
+        -motion.forward_world.y * assist.wings_leveling * qbar * model.mean_chord_m,
+        -beta * assist.coordinated_turn * qbar * model.wingspan_m,
+        motion.right_world.y * assist.wings_leveling * qbar * model.wingspan_m,
     );
     let total_torque_body_nm =
         control_torque_body_nm + damping_torque_body_nm + assist_torque_body_nm;

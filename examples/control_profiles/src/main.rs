@@ -1,10 +1,8 @@
+use saddle_vehicle_flight_example_presets::{fixed_wing_arcade_racer, rotorcraft_arcade};
 use saddle_vehicle_flight_example_support as support;
 
 use bevy::prelude::*;
-use saddle_vehicle_flight::{
-    FixedWingAircraft, FlightAssist, FlightBody, FlightControlInput, FlightTelemetry,
-    HelicopterAircraft,
-};
+use saddle_vehicle_flight::{FlightControlInput, FlightTelemetry};
 use support::{
     configure_example_app, spawn_fixed_wing_demo, spawn_helicopter_demo,
     spawn_lights_ground_and_camera, spawn_overlay,
@@ -71,16 +69,16 @@ fn setup(
         0.88,
         false,
     );
+    let arcade_racer = fixed_wing_arcade_racer();
     commands.entity(racer).insert((
         ProfileLabel("Arcade Fixed-Wing"),
         FixedWingArcadeProfile,
-        FixedWingAircraft::arcade_racer(),
-        FixedWingAircraft::arcade_racer_body(),
-        FlightAssist {
-            wings_leveling: 0.08,
-            coordinated_turn: 0.06,
-            ..default()
-        },
+        arcade_racer.model,
+        arcade_racer.actuators,
+        arcade_racer.control_map,
+        arcade_racer.ground_handling,
+        arcade_racer.body,
+        arcade_racer.assist,
     ));
 
     let utility = spawn_helicopter_demo(
@@ -107,16 +105,16 @@ fn setup(
         0.64,
         false,
     );
+    let arcade_rotorcraft = rotorcraft_arcade();
     commands.entity(arcade).insert((
         ProfileLabel("Arcade Helicopter"),
         HelicopterArcadeProfile,
-        HelicopterAircraft::arcade(),
-        FlightBody::new(900.0, Vec3::new(1_350.0, 1_250.0, 1_650.0)),
-        FlightAssist {
-            hover_leveling: 0.22,
-            coordinated_turn: 0.08,
-            ..default()
-        },
+        arcade_rotorcraft.model,
+        arcade_rotorcraft.actuators,
+        arcade_rotorcraft.control_map,
+        arcade_rotorcraft.ground_handling,
+        arcade_rotorcraft.body,
+        arcade_rotorcraft.assist,
     ));
 
     spawn_overlay(&mut commands, "Control Profiles Example");
@@ -202,13 +200,14 @@ fn update_overlay(
         .iter()
         .map(|(label, telemetry)| {
             format!(
-                "{:<20} TAS {:>5.1}  V/S {:>5.1}  AoA {:>5.1}  Slip {:>5.1}  Power {:>4.2}",
+                "{:<20} TAS {:>5.1}  V/S {:>5.1}  AoA {:>5.1}  Slip {:>5.1}  Fwd {:>4.2}  Vert {:>4.2}",
                 label.0,
                 telemetry.true_airspeed_mps,
                 telemetry.vertical_speed_mps,
                 telemetry.angle_of_attack_deg,
                 telemetry.sideslip_deg,
-                telemetry.throttle.max(telemetry.collective),
+                telemetry.forward_thrust,
+                telemetry.vertical_thrust,
             )
         })
         .collect::<Vec<_>>();

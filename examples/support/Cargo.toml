@@ -12,6 +12,7 @@ bevy_input_focus = { workspace = true }
 saddle-pane = { workspace = true }
 saddle-camera-third-person-camera = { workspace = true }
 saddle-vehicle-flight = { workspace = true }
+saddle-vehicle-flight-example-presets = { workspace = true }
 bevy_ui_widgets = { workspace = true }
 
 [lints]

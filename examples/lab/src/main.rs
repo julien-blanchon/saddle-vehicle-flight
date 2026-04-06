@@ -206,41 +206,30 @@ fn set_active_vehicle(commands: &mut Commands, state: &mut LabState, active: Act
 fn update_overlay(
     state: Res<LabState>,
     mut overlay: Query<&mut Text, (With<Node>, Without<ExamplePilot>)>,
-    plane: Query<
-        (&FlightTelemetry, &FlightAeroState, &FlightForces),
-        With<saddle_vehicle_flight::FixedWingAircraft>,
-    >,
-    helicopter: Query<
-        (&FlightTelemetry, &FlightAeroState, &FlightForces),
-        With<saddle_vehicle_flight::HelicopterAircraft>,
-    >,
-    vtol: Query<
-        (&FlightTelemetry, &FlightAeroState, &FlightForces),
-        With<saddle_vehicle_flight::VtolAircraft>,
-    >,
+    telemetry: Query<(&FlightTelemetry, &FlightAeroState, &FlightForces)>,
 ) {
     let Ok(mut overlay) = overlay.single_mut() else {
         return;
     };
-    let Ok((plane_telemetry, plane_aero, plane_forces)) = plane.single() else {
+    let Ok((plane_telemetry, plane_aero, plane_forces)) = telemetry.get(state.plane) else {
         return;
     };
-    let Ok((heli_telemetry, heli_aero, heli_forces)) = helicopter.single() else {
+    let Ok((heli_telemetry, heli_aero, heli_forces)) = telemetry.get(state.helicopter) else {
         return;
     };
-    let Ok((vtol_telemetry, vtol_aero, vtol_forces)) = vtol.single() else {
+    let Ok((vtol_telemetry, vtol_aero, vtol_forces)) = telemetry.get(state.vtol) else {
         return;
     };
 
     overlay.0 = format!(
-        "Flight Lab\nActive craft: {:?}  (1 fixed-wing, 2 helicopter, 3 VTOL)\n\nFixed-wing\n  TAS {:>6.1}  Alt {:>6.1}  AoA {:>5.1}  Stall {}\n  q {:>7.1}  Throttle {:>4.2}  Gear {:>4.2}\n  Lift {:>7.1}N  Thrust {:>7.1}N\n\nHelicopter\n  TAS {:>6.1}  Alt {:>6.1}  Slip {:>5.1}  Vertical {:>5.1}\n  q {:>7.1}  Collective {:>4.2}  Gear {:>4.2}\n  Lift {:>7.1}N  Torque {:>7.1}Nm\n\nVTOL\n  TAS {:>6.1}  Alt {:>6.1}  AoA {:>5.1}  Transition {:>4.2}\n  q {:>7.1}  Power {:>4.2}  Gear {:>4.2}\n  Lift {:>7.1}N  Thrust {:>7.1}N\n\nPilot controls: arrows pitch/roll, Q/E yaw, [/] throttle or collective, ,/. VTOL transition, G gear.\nBRP targets: Lab Bush Plane, Lab Utility Helicopter, Lab Tiltrotor, Example Camera.",
+        "Flight Lab\nActive craft: {:?}  (1 fixed-wing, 2 helicopter, 3 VTOL)\n\nFixed-wing\n  TAS {:>6.1}  Alt {:>6.1}  AoA {:>5.1}  Stall {}\n  q {:>7.1}  Fwd {:>4.2}  Gear {:>4.2}\n  Lift {:>7.1}N  Thrust {:>7.1}N\n\nHelicopter\n  TAS {:>6.1}  Alt {:>6.1}  Slip {:>5.1}  Vertical {:>5.1}\n  q {:>7.1}  Vert {:>4.2}  Gear {:>4.2}\n  Lift {:>7.1}N  Torque {:>7.1}Nm\n\nVTOL\n  TAS {:>6.1}  Alt {:>6.1}  AoA {:>5.1}  Transition {:>4.2}\n  q {:>7.1}  Fwd {:>4.2}  Vert {:>4.2}  Gear {:>4.2}\n  Lift {:>7.1}N  Thrust {:>7.1}N\n\nPilot controls: arrows pitch/roll, Q/E yaw, [/] mapped power channels, ,/. mapped VTOL transition, G gear.\nBRP targets: Lab Bush Plane, Lab Utility Helicopter, Lab Tiltrotor, Example Camera.",
         state.active,
         plane_telemetry.true_airspeed_mps,
         plane_telemetry.altitude_msl_m,
         plane_telemetry.angle_of_attack_deg,
         plane_telemetry.stalled,
         plane_aero.dynamic_pressure_pa,
-        plane_telemetry.throttle,
+        plane_telemetry.forward_thrust,
         plane_telemetry.gear_position,
         plane_forces.lift_world_newtons.length(),
         plane_forces.thrust_world_newtons.length(),
@@ -249,7 +238,7 @@ fn update_overlay(
         heli_telemetry.sideslip_deg,
         heli_telemetry.vertical_speed_mps,
         heli_aero.dynamic_pressure_pa,
-        heli_telemetry.collective,
+        heli_telemetry.vertical_thrust,
         heli_telemetry.gear_position,
         heli_forces.lift_world_newtons.length(),
         heli_forces.total_torque_body_nm.length(),
@@ -258,7 +247,8 @@ fn update_overlay(
         vtol_telemetry.angle_of_attack_deg,
         vtol_telemetry.vtol_transition,
         vtol_aero.dynamic_pressure_pa,
-        vtol_telemetry.throttle.max(vtol_telemetry.collective),
+        vtol_telemetry.forward_thrust,
+        vtol_telemetry.vertical_thrust,
         vtol_telemetry.gear_position,
         vtol_forces.lift_world_newtons.length(),
         vtol_forces.thrust_world_newtons.length(),
